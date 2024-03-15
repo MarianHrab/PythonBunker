@@ -1,0 +1,38 @@
+{% include 'header.html' %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Список кімнат</title>
+</head>
+<body>
+    <h1>Список кімнат</h1>
+
+    <!-- Відображення списку кімнат -->
+    <ul>
+        {% for room in rooms %}
+        <li>
+            {{ room.name }}
+            {% if room.game_started %}
+                <form action="{% url 'game_started' room.id %}" method="GET">
+                    <button type="submit">Join Game</button>
+                </form>
+            {% else %}
+                <form action="{% url 'room_detail' room.id %}" method="GET">
+                    <button type="submit">Connect</button>
+                </form>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+
+    <!-- Форма створення кімнати -->
+    <h2>Створити кімнату</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Створити кімнату</button>
+    </form>
+</body>
+</html>

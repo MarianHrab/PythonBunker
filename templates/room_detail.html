@@ -1,0 +1,78 @@
+{% include 'header.html' %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Деталі кімнати</title>
+</head>
+<body>
+    <h1>Привіт, гравець!</h1>
+
+    <!-- Виведення місць у кімнаті -->
+    <ul>
+        {% for place in places %}
+        <li id="place{{ place.id }}">
+            <!-- Кнопка "take a place" -->
+            {% if place.player_name %}
+                <span>{{ place.player_name }} Place №{{ place.id }}</span>
+            {% else %}
+                <button onclick="takePlace({{ place.id }})">Take a Place</button>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% if user.is_authenticated and room.creator == user %}
+        <button onclick="deleteRoom({{ room.id }})">Delete Room</button>
+    {% endif %}
+
+    <!-- Display character card -->
+    <h2>Character Card</h2>
+    <p>Bio: {{ character_card.bio }}</p>
+    <p>Health: {{ character_card.health }}</p>
+    <p>Phobia: {{ character_card.phobia }}</p>
+    <p>Hobby: {{ character_card.hobby }}</p>
+
+    <script>
+   function takePlace(placeId) {
+    // Відправка запиту на сервер для зайняття місця
+    fetch(`/take_place/{{ room_id }}/${placeId}/`)
+        .then(response => response.json())
+        .then(data => {
+            // Перевірка, чи є помилка
+            if (data.error) {
+                alert(data.error);
+            } else {
+                // Відображення імені гравця
+                document.getElementById(`place${placeId}`).innerText = `${data.player_name} Place №${placeId}`;
+            }
+        })
+        .catch(error => console.error('Error:', error));
+}
+    function deleteRoom(roomId) {
+        fetch(`/delete_room/${roomId}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                // Перенаправлення на головну сторінку, якщо видалення пройшло успішно
+                window.location.href = '/';
+            } else {
+                alert('Failed to delete room');
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+    </script>
+
+    {% if user.is_authenticated and user == room.creator %}
+        <form method="post" action="{% url 'start_game' room.id %}">
+            {% csrf_token %}
+            <button type="submit">Start Game</button>
+        </form>
+    {% endif %}
+</body>
+</html>

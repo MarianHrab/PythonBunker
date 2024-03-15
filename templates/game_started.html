@@ -1,0 +1,28 @@
+{% include 'header.html' %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Started</title>
+</head>
+<body>
+
+   {% block content %}
+        <h1>Character Information</h1>
+    
+        <p>Bio: {{ character_card.bio }}</p>
+        <p>Health: {{ character_card.health }}</p>
+        <p>Phobia: {{ character_card.phobia }}</p>
+        <p>Hobby: {{ character_card.hobby }}</p>
+        <p>Knowledge: {{ character_card.knowledge }}</p>
+        <p>Additional Info: {{ character_card.additional_info }}</p>
+        <p>Luggage: {{ character_card.luggage }}</p>
+    {% endblock %}
+
+    <script>
+        // Your JavaScript code here
+    </script>
+</body>
+</html>
