@@ -14,15 +14,9 @@
         {% for room in rooms %}
         <li>
             {{ room.name }}
-            {% if room.game_started %}
-                <form action="{% url 'game_started' room.id %}" method="GET">
-                    <button type="submit">Join Game</button>
-                </form>
-            {% else %}
-                <form action="{% url 'room_detail' room.id %}" method="GET">
-                    <button type="submit">Connect</button>
-                </form>
-            {% endif %}
+            <form action="{% url 'room_detail' room.id %}" method="GET">
+                <button type="submit">Connect</button>
+            </form>
         </li>
         {% endfor %}
     </ul>
@@ -34,5 +28,7 @@
         {{ form.as_p }}
         <button type="submit">Створити кімнату</button>
     </form>
+
+
 </body>
 </html>

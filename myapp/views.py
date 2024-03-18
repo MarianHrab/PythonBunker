@@ -13,13 +13,20 @@ from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from .models import Room
 import random
+from django.db import transaction
+from django.db.models import Min, F
+
+
 
 
 from .utils import (
     BIO_OPTIONS,
     HEALTH_OPTIONS,
     PHOBIA_OPTIONS,
-    # імпортуйте інші варіанти для інших характеристик
+    KNOWLEDGE_OPTIONS,
+    HOBBY_OPTIONS,
+    ADDITIONAL_INFO_OPTIONS,
+    LUGGAGE_OPTIONS,
 )
 
 def register(request):
@@ -136,23 +143,42 @@ def start_game(request, room_id):
 
     # Запускаємо гру
     room.game_started = True
+
+    # Отримуємо номер мінімального місця
+    min_place_number = places.aggregate(min_place_number=Min('player_number'))['min_place_number']
+
+    # Отримуємо першого гравця для ходу
+    first_player = User.objects.filter(place__room=room, place__player_number=min_place_number).first()
+
+    # Якщо немає жодного гравця на мінімальному місці, використовуємо F-об'єкт
+    if not first_player:
+        first_player = User.objects.filter(place__room=room).annotate(min_place_number=Min('place__player_number')).order_by('min_place_number').first()
+
+    # Позначаємо поточного гравця
+    room.current_turn_player = first_player
     room.save()
 
-    # Генеруємо характеристики для кожного гравця
-    for place in places:
-        if place.player_name:
-            # Створюємо або оновлюємо характеристики гравця
-            character_card, created = CharacterCard.objects.get_or_create(
-                player=User.objects.get(username=place.player_name),
-                defaults={
-                    'bio': random.choice(BIO_OPTIONS),
-                    'health': random.choice(HEALTH_OPTIONS),
-                    'phobia': random.choice(PHOBIA_OPTIONS),
-                    # Додайте інші характеристики з варіантами
-                }
-            )
+    # Створюємо характеристики для кожного гравця
+    with transaction.atomic():
+        for place in places:
+            if place.player_name:
+                # Створюємо новий CharacterCard для кожного гравця
+                character_card = CharacterCard.objects.create(
+                    player=User.objects.get(username=place.player_name),
+                    bio=random.choice(BIO_OPTIONS) if BIO_OPTIONS else '',
+                    health=random.choice(HEALTH_OPTIONS) if HEALTH_OPTIONS else '',
+                    phobia=random.choice(PHOBIA_OPTIONS) if PHOBIA_OPTIONS else '',
+                    hobby=random.choice(HOBBY_OPTIONS) if HOBBY_OPTIONS else '',
+                    knowledge=random.choice(KNOWLEDGE_OPTIONS) if KNOWLEDGE_OPTIONS else '',
+                    additional_info=random.choice(ADDITIONAL_INFO_OPTIONS) if ADDITIONAL_INFO_OPTIONS else '',
+                    luggage=random.choice(LUGGAGE_OPTIONS) if LUGGAGE_OPTIONS else '',
+                )
+                # Присвоюємо створену CharacterCard об'єкту місця
+                place.character_card = character_card
+                place.save()
 
-    return HttpResponse("Game started successfully")
+    # Повертаємо відповідь у форматі JSON, щоб показати, що гра успішно стартувала
+    return JsonResponse({'message': 'Game started successfully'})
 
 def character_info(request):
     user = request.user
@@ -182,7 +208,56 @@ def character_info(request):
 
     return render(request, 'character_info.html', {'character_card': character_card})
 
+@require_http_methods(["POST"])
+def toggle_visibility(request, character_card_id, characteristic):
+    # Отримати характеристику по її ідентифікатору
+    try:
+        character_card = CharacterCard.objects.get(id=character_card_id)
+    except CharacterCard.DoesNotExist:
+        return JsonResponse({'error': 'Character card not found'}, status=404)
+
+    # Перевірити, чи користувач є власником цієї характеристики
+    if character_card.player != request.user:
+        return JsonResponse({'error': 'You are not the owner of this character card'}, status=403)
+
+    # Отримати кімнату, з якою пов'язаний character_card
+    room = character_card.place.room
+
+    # Змінити видимість характеристики згідно з параметром
+    if characteristic == 'bio':
+        character_card.bio_hidden = not character_card.bio_hidden
+    elif characteristic == 'health':
+        character_card.health_hidden = not character_card.health_hidden
+    elif characteristic == 'phobia':
+        character_card.phobia_hidden = not character_card.phobia_hidden
+    elif characteristic == 'hobby':
+        character_card.hobby_hidden = not character_card.hobby_hidden
+    elif characteristic == 'knowledge':
+        character_card.knowledge_hidden = not character_card.knowledge_hidden
+    elif characteristic == 'additional_info':
+        character_card.additional_info_hidden = not character_card.additional_info_hidden
+    elif characteristic == 'luggage':
+        character_card.luggage_hidden = not character_card.luggage_hidden
+    else:
+        return JsonResponse({'error': 'Invalid characteristic'}, status=400)
+
+    character_card.save()
+
+    players = room.place_set.order_by('player_number').values_list('player_name', flat=True)
+
+    # Визначення поточного гравця, який має робити хід
+    current_player_index = players.index(room.current_turn_player.username)
+    next_player_index = (current_player_index + 1) % len(players)
+    next_player_username = players[next_player_index]
+
+    # Зміна поточного гравця, який має робити хід
+    room.current_turn_player = User.objects.get(username=next_player_username)
+    room.save()
+
+    return JsonResponse({'success': 'Visibility toggled successfully'})
+
 def game_started(request, room_id):
     # Опрацьовуйте початок гри тут
     room = Room.objects.get(id=room_id)
     return render(request, 'game_started.html', {'room': room, 'character_card': CharacterCard.objects.get(player=request.user)})
+

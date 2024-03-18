@@ -15,7 +15,7 @@
         <li id="place{{ place.id }}">
             <!-- Кнопка "take a place" -->
             {% if place.player_name %}
-                <span>{{ place.player_name }} Place №{{ place.id }}</span>
+                <span>{{ place.player_name }} Place №{{ forloop.counter }}</span>
             {% else %}
                 <button onclick="takePlace({{ place.id }})">Take a Place</button>
             {% endif %}
@@ -26,15 +26,120 @@
         <button onclick="deleteRoom({{ room.id }})">Delete Room</button>
     {% endif %}
 
-    <!-- Display character card -->
-    <h2>Character Card</h2>
-    <p>Bio: {{ character_card.bio }}</p>
-    <p>Health: {{ character_card.health }}</p>
-    <p>Phobia: {{ character_card.phobia }}</p>
-    <p>Hobby: {{ character_card.hobby }}</p>
+    <h2>Поточний хід:</h2>
+        {% if room.current_turn_player %}
+            <p>{{ room.current_turn_player.username }}</p>
+        {% else %}
+            <p>Гра ще не почалася або немає поточного гравця</p>
+        {% endif %}
 
+    <h2>Список гравців:</h2>
+    <ul>
+        {% for place in places %}
+        <li>{{ place.player_name }}</li>
+        {% with character_card=place.character_card %}
+            {% if character_card %}
+                <ul>
+                    {% if character_card.player == request.user %}
+                        <li>Bio: {{ character_card.bio }}</li>
+                            <button onclick="toggleVisibility('{{ character_card.id }}', 'bio')">Show bio</button>
+                        <li>Health: {{ character_card.health }}</li>
+                            <button onclick="toggleVisibility('{{ character_card.id }}', 'health')">Show Health</button>
+                        <li>Phobia: {{ character_card.phobia }}</li>
+                            <button onclick="toggleVisibility('{{ character_card.id }}', 'phobia')">Show Phobia</button>
+                        <li>Hobby: {{ character_card.hobby }}</li>
+                            <button onclick="toggleVisibility('{{ character_card.id }}', 'hobby')">Show Hobby</button>
+                        <li>Knowledge: {{ character_card.knowledge }}</li>
+                           <button onclick="toggleVisibility('{{ character_card.id }}', 'knowledge')">Show Knowledge</button>
+                        <li>Additional Info: {{ character_card.additional_info }}</li>
+                            <button onclick="toіggleVisibility('{{ character_card.id }}', 'additional_info')">Show Additional Info</button>
+                        <li>Baggage: {{ character_card.luggage }}</li>
+                            <button onclick="toggleVisibility('{{ character_card.id }}', 'luggage')">Show Luggage</button>
+                    {% else %}
+                        {% if not character_card.bio_hidden %}
+                            <li>Bio: {{ character_card.bio }}</li>
+                        {% else %}
+                            <li>Bio: Hidden</li>
+                        {% endif %}
+                        {% if not character_card.health_hidden %}
+                            <li>Health: {{ character_card.health }}</li>
+                        {% else %}
+                            <li>Health: Hidden</li>
+                        {% endif %}
+                        {% if not character_card.phobia_hidden %}
+                            <li>Phobia: {{ character_card.phobia }}</li>
+                        {% else %}
+                            <li>Phobia: Hidden</li>
+                        {% endif %}
+                        {% if not character_card.hobby_hidden %}
+                            <li>Hobby: {{ character_card.hobby }}</li>
+                        {% else %}
+                            <li>Hobby: Hidden</li>
+                        {% endif %}
+                        {% if not character_card.knowledge_hidden %}
+                            <li>Knowledge: {{ character_card.knowledge }}</li>
+                        {% else %}
+                            <li>Knowledge: Hidden</li>
+                        {% endif %}
+                        {% if not character_card.additional_info_hidden %}
+                            <li>Additional Info: {{ character_card.additional_info }}</li>
+                        {% else %}
+                            <li>Additional Info: Hidden</li>
+                        {% endif %}
+                        {% if not character_card.luggage_hidden %}
+                            <li>Baggage: {{ character_card.luggage }}</li>
+                        {% else %}
+                            <li>Baggage: Hidden</li>
+                        {% endif %}
+                    {% endif %}
+                </ul>
+            {% else %}
+                <p>No Character Card available for this player</p>
+            {% endif %}
+        {% endwith %}
+    {% empty %}
+        <li>Кімната порожня</li>
+    {% endfor %}
+    </ul>
+
+    
     <script>
-   function takePlace(placeId) {
+
+        
+        
+        function toggleVisibility(characterCardId, characteristic) {
+    // Відправити запит на сервер для зміни статусу видимості характеристики
+    fetch(`/toggle_visibility/${characterCardId}/${characteristic}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: ''
+    })
+    .then(response => {
+        if (response.ok) {
+            // Оновити сторінку для відображення оновлених даних
+            location.reload();
+        } else {
+            alert('Failed to toggle visibility');
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+    function revealCharacteristics() {
+      var selectedPlayer = document.getElementById("playerSelect").value;
+      var characteristicsDiv = document.getElementById("characteristics");
+
+      // Встановлюємо атрибут hidden в залежності від вибраного гравця
+      if (selectedPlayer === "player1") {
+        characteristicsDiv.hidden = false;
+      } else {
+        characteristicsDiv.hidden = true;
+      }
+    }
+        function takePlace(placeId) {
     // Відправка запиту на сервер для зайняття місця
     fetch(`/take_place/{{ room_id }}/${placeId}/`)
         .then(response => response.json())

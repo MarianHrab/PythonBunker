@@ -18,3 +18,21 @@ PHOBIA_OPTIONS = [
     "Fear of the dark",
     # Додайте інші варіанти
 ]
+HOBBY_OPTIONS = [
+    "Painting",
+    "Basketball",
+    "Gaming",
+]
+KNOWLEDGE_OPTIONS = [
+    "Know where the bunker with scientists is",
+    "Know where the bunker placed",
+]
+ADDITIONAL_INFO_OPTIONS = [
+    "Win the lottery",
+    "Scamer",
+]
+LUGGAGE_OPTIONS = [
+    "3 AK-47",
+    "The block o water",
+    "Seeds",
+]
