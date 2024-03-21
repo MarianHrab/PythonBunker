@@ -16,4 +16,5 @@ urlpatterns = [
     path('game_started/<int:room_id>/', views.game_started, name='game_started'),
     path('character/', views.character_info, name='character_info'),
     path('toggle_visibility/<int:character_card_id>/<str:characteristic>/', views.toggle_visibility, name='toggle_visibility'),
+    path('end_turn/<int:room_id>/', views.endTurn, name='end_turn'),
 ]

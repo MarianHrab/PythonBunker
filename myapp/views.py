@@ -16,9 +16,6 @@ import random
 from django.db import transaction
 from django.db.models import Min, F
 
-
-
-
 from .utils import (
     BIO_OPTIONS,
     HEALTH_OPTIONS,
@@ -29,6 +26,7 @@ from .utils import (
     LUGGAGE_OPTIONS,
 )
 
+
 def register(request):
     if request.method == 'POST':
         form = UserCreationForm(request.POST)
@@ -38,6 +36,7 @@ def register(request):
     else:
         form = UserCreationForm()
     return render(request, 'registration/register.html', {'form': form})
+
 
 def user_login(request):
     if request.method == 'POST':
@@ -82,13 +81,22 @@ def index(request):
 def room_detail(request, room_id):
     # Отримати кімнату за ідентифікатором
     room = get_object_or_404(Room, id=room_id)
+
     # Отримати або створити місця для кімнати
     places = room.place_set.all()
     if not places:
         for i in range(room.max_players):
             place = Place.objects.create(room=room)
             places = room.place_set.all()  # Оновити список місць після створення нового місця
-    return render(request, 'room_detail.html', {'room': room, 'places': places, 'room_id': room_id})
+
+    # Отримати список гравців у кімнаті через модель Place
+    players = [place.player_name for place in places if place.player_name]
+
+    # Отримати об'єкти User для гравців у кімнаті
+    player_users = User.objects.filter(username__in=players)
+
+    return render(request, 'room_detail.html',
+                  {'room': room, 'places': places, 'room_id': room_id, 'players': player_users})
 
 
 def take_place(request, room_id, place_id):
@@ -114,6 +122,7 @@ def take_place(request, room_id, place_id):
     place.save()
 
     return JsonResponse({'player_name': request.user.username})
+
 
 @require_http_methods(["DELETE"])
 def delete_room(request, room_id):
@@ -144,21 +153,13 @@ def start_game(request, room_id):
     # Запускаємо гру
     room.game_started = True
 
-    # Отримуємо номер мінімального місця
-    min_place_number = places.aggregate(min_place_number=Min('player_number'))['min_place_number']
+    # Призначаємо поточного гравця як користувача, який ініціював запит
+    room.current_turn_player = request.user
 
-    # Отримуємо першого гравця для ходу
-    first_player = User.objects.filter(place__room=room, place__player_number=min_place_number).first()
-
-    # Якщо немає жодного гравця на мінімальному місці, використовуємо F-об'єкт
-    if not first_player:
-        first_player = User.objects.filter(place__room=room).annotate(min_place_number=Min('place__player_number')).order_by('min_place_number').first()
-
-    # Позначаємо поточного гравця
-    room.current_turn_player = first_player
+    # Зберігаємо зміни
     room.save()
 
-    # Створюємо характеристики для кожного гравця
+    # Роздаємо характеристики гравцям
     with transaction.atomic():
         for place in places:
             if place.player_name:
@@ -177,8 +178,32 @@ def start_game(request, room_id):
                 place.character_card = character_card
                 place.save()
 
-    # Повертаємо відповідь у форматі JSON, щоб показати, що гра успішно стартувала
-    return JsonResponse({'message': 'Game started successfully'})
+    # Повертаємо відповідь JSON, що підтверджує успішний початок гри
+    return JsonResponse({'message': 'Гра успішно розпочалася'})
+
+
+def endTurn(request, room_id):
+    # Отримати об'єкт кімнати за room_id
+    room = get_object_or_404(Room, id=room_id)
+
+    # Перевірка, чи гра взагалі розпочалася
+    if not room.game_started:
+        return JsonResponse({'error': 'Гра ще не розпочалася'}, status=400)
+
+    # Отримати місце поточного гравця
+    place = Place.objects.filter(room=room, player_name=request.user.username).first()
+
+    # Перевірити, чи гравець перебуває в цій кімнаті
+    if not place:
+        return JsonResponse({'error': 'Ви не перебуваєте в цій кімнаті'}, status=400)
+
+    # Позначити хід гравця як завершений
+    place.turn_finished = True
+    place.save()
+
+    # Повернути підтвердження у форматі JSON
+    return JsonResponse({'message': 'Хід завершено успішно'})
+
 
 def character_info(request):
     user = request.user
@@ -208,7 +233,8 @@ def character_info(request):
 
     return render(request, 'character_info.html', {'character_card': character_card})
 
-@require_http_methods(["POST"])
+
+@login_required
 def toggle_visibility(request, character_card_id, characteristic):
     # Отримати характеристику по її ідентифікатору
     try:
@@ -219,9 +245,6 @@ def toggle_visibility(request, character_card_id, characteristic):
     # Перевірити, чи користувач є власником цієї характеристики
     if character_card.player != request.user:
         return JsonResponse({'error': 'You are not the owner of this character card'}, status=403)
-
-    # Отримати кімнату, з якою пов'язаний character_card
-    room = character_card.place.room
 
     # Змінити видимість характеристики згідно з параметром
     if characteristic == 'bio':
@@ -243,21 +266,25 @@ def toggle_visibility(request, character_card_id, characteristic):
 
     character_card.save()
 
-    players = room.place_set.order_by('player_number').values_list('player_name', flat=True)
-
-    # Визначення поточного гравця, який має робити хід
-    current_player_index = players.index(room.current_turn_player.username)
-    next_player_index = (current_player_index + 1) % len(players)
-    next_player_username = players[next_player_index]
-
-    # Зміна поточного гравця, який має робити хід
-    room.current_turn_player = User.objects.get(username=next_player_username)
-    room.save()
-
     return JsonResponse({'success': 'Visibility toggled successfully'})
+
+
+def check_end_turn(request):
+    room_id = request.GET.get('room_id')
+    room = Room.objects.get(id=room_id)
+
+    # Отримуємо всі місця у кімнаті
+    places_in_room = Place.objects.filter(room=room)
+
+    # Перевіряємо, чи всі гравці в кімнаті натиснули кнопку "End Turn"
+    all_players_finished_turn = all(place.finished_turn for place in places_in_room)
+
+    # Повертаємо відповідь у форматі JSON
+    return JsonResponse({'all_players_finished_turn': all_players_finished_turn})
+
 
 def game_started(request, room_id):
     # Опрацьовуйте початок гри тут
     room = Room.objects.get(id=room_id)
-    return render(request, 'game_started.html', {'room': room, 'character_card': CharacterCard.objects.get(player=request.user)})
-
+    return render(request, 'game_started.html',
+                  {'room': room, 'character_card': CharacterCard.objects.get(player=request.user)})

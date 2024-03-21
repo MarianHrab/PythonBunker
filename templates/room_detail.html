@@ -8,7 +8,6 @@
 </head>
 <body>
     <h1>Привіт, гравець!</h1>
-
     <!-- Виведення місць у кімнаті -->
     <ul>
         {% for place in places %}
@@ -26,9 +25,14 @@
         <button onclick="deleteRoom({{ room.id }})">Delete Room</button>
     {% endif %}
 
+
+
     <h2>Поточний хід:</h2>
         {% if room.current_turn_player %}
-            <p>{{ room.current_turn_player.username }}</p>
+            <p id="currentTurnPlayer">{{ room.current_turn_player.username }}</p>
+            {% if room.current_turn_player == user %}
+                <button class="end-turn-button" data-room-id="{{ room_id }}">End Turn</button>
+            {% endif %}
         {% else %}
             <p>Гра ще не почалася або немає поточного гравця</p>
         {% endif %}
@@ -41,20 +45,35 @@
             {% if character_card %}
                 <ul>
                     {% if character_card.player == request.user %}
-                        <li>Bio: {{ character_card.bio }}</li>
-                            <button onclick="toggleVisibility('{{ character_card.id }}', 'bio')">Show bio</button>
-                        <li>Health: {{ character_card.health }}</li>
-                            <button onclick="toggleVisibility('{{ character_card.id }}', 'health')">Show Health</button>
-                        <li>Phobia: {{ character_card.phobia }}</li>
-                            <button onclick="toggleVisibility('{{ character_card.id }}', 'phobia')">Show Phobia</button>
-                        <li>Hobby: {{ character_card.hobby }}</li>
-                            <button onclick="toggleVisibility('{{ character_card.id }}', 'hobby')">Show Hobby</button>
-                        <li>Knowledge: {{ character_card.knowledge }}</li>
-                           <button onclick="toggleVisibility('{{ character_card.id }}', 'knowledge')">Show Knowledge</button>
-                        <li>Additional Info: {{ character_card.additional_info }}</li>
-                            <button onclick="toіggleVisibility('{{ character_card.id }}', 'additional_info')">Show Additional Info</button>
-                        <li>Baggage: {{ character_card.luggage }}</li>
-                            <button onclick="toggleVisibility('{{ character_card.id }}', 'luggage')">Show Luggage</button>
+                            <!-- Показуємо кнопки "Show" тільки поточному гравцеві -->
+                            <li>Bio: {{ character_card.bio }}</li>
+                            {% if room.current_turn_player == user %}
+                                <button onclick="toggleVisibility('{{ character_card.id }}', 'bio')">Show bio</button>
+                            {% endif %}
+                            <li>Health: {{ character_card.health }}</li>
+                            {% if room.current_turn_player == user %}
+                                <button onclick="toggleVisibility('{{ character_card.id }}', 'health')">Show Health</button>
+                            {% endif %}
+                            <li>Phobia: {{ character_card.phobia }}</li>
+                            {% if room.current_turn_player == user %}
+                                <button onclick="toggleVisibility('{{ character_card.id }}', 'phobia')">Show Phobia</button>
+                            {% endif %}
+                            <li>Hobby: {{ character_card.hobby }}</li>
+                            {% if room.current_turn_player == user %}
+                                <button onclick="toggleVisibility('{{ character_card.id }}', 'hobby')">Show Hobby</button>
+                            {% endif %}
+                            <li>Knowledge: {{ character_card.knowledge }}</li>
+                            {% if room.current_turn_player == user %}
+                                <button onclick="toggleVisibility('{{ character_card.id }}', 'knowledge')">Show Knowledge</button>
+                            {% endif %}
+                            <li>Additional Info: {{ character_card.additional_info }}</li>
+                            {% if room.current_turn_player == user %}
+                                <button onclick="toggleVisibility('{{ character_card.id }}', 'additional_info')">Show Additional Info</button>
+                            {% endif %}
+                            <li>Baggage: {{ character_card.luggage }}</li>
+                            {% if room.current_turn_player == user %}
+                                <button onclick="toggleVisibility('{{ character_card.id }}', 'luggage')">Show Luggage</button>
+                            {% endif %}
                     {% else %}
                         {% if not character_card.bio_hidden %}
                             <li>Bio: {{ character_card.bio }}</li>
@@ -101,31 +120,107 @@
         <li>Кімната порожня</li>
     {% endfor %}
     </ul>
-
     
-    <script>
+    <select id="playerSelect" {% if not all_players_finished_turn %} disabled {% endif %}>
+        {% for player in players %}
+            {% if player != user %}
+                <option value="{{ player.id }}">{{ player.username }}</option>
+            {% endif %}
+        {% endfor %}
+    </select>
+    
+    <button onclick="vote()" {% if not all_players_finished_turn %} disabled {% endif %}>Проголосувати</button>
 
+
+    {% if user.is_authenticated and user == room.creator and not room.game_started %}
+        <form method="post" action="{% url 'start_game' room.id %}">
+            {% csrf_token %}
+            <button type="submit">Start Game</button>
+        </form>
+    {% endif %}
+
+    <script>
         
+        // Обробник кліків для кнопки "End Turn"
+    function handleEndTurnClick(event) {
+        // Отримуємо номер кімнати з атрибута "data-room-id"
+        var roomId = event.target.getAttribute('data-room-id');
+        // Викликаємо функцію endTurn з номером кімнати
+        endTurn(roomId);
+    }
+    
+    // Додаємо обробник кліків до всіх кнопок з класом "end-turn-button"
+    var endTurnButtons = document.querySelectorAll('.end-turn-button');
+    endTurnButtons.forEach(function(button) {
+        button.addEventListener('click', handleEndTurnClick);
+    });
+    
+    function endTurn(roomId) {
+        var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+        fetch(`/end_turn/${roomId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: ''
+        })
+        .then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Failed to end turn');
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
         
-        function toggleVisibility(characterCardId, characteristic) {
-    // Відправити запит на сервер для зміни статусу видимості характеристики
-    fetch(`/toggle_visibility/${characterCardId}/${characteristic}/`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}',
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: ''
-    })
-    .then(response => {
-        if (response.ok) {
-            // Оновити сторінку для відображення оновлених даних
-            location.reload();
-        } else {
-            alert('Failed to toggle visibility');
+    function vote() {
+            var selectedPlayer = document.getElementById("playerSelect").value;
+            var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            fetch(`/vote/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ selectedPlayer: selectedPlayer })
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Додайте обробник для випадаючого меню після голосування
+                    // Тут ви можете відобразити повідомлення про очікування інших гравців
+                } else {
+                    alert('Failed to vote');
+                }
+            })
+            .catch(error => console.error('Error:', error));
         }
-    })
-    .catch(error => console.error('Error:', error));
+        // Знаходимо всі кнопки з класом "end-turn-button"
+        function toggleVisibility(characterCardId, characteristic) {
+            // Отримати CSRF-токен
+            var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            // Відправити запит на сервер для зміни статусу видимості характеристики
+            fetch(`/toggle_visibility/${characterCardId}/${characteristic}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: ''
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Оновити сторінку для відображення оновлених даних
+                    location.reload();
+                } else {
+                    alert('Failed to toggle visibility');
+                }
+            })
+            .catch(error => console.error('Error:', error));
 }
 
     function revealCharacteristics() {
@@ -140,16 +235,23 @@
       }
     }
         function takePlace(placeId) {
-    // Відправка запиту на сервер для зайняття місця
     fetch(`/take_place/{{ room_id }}/${placeId}/`)
         .then(response => response.json())
         .then(data => {
-            // Перевірка, чи є помилка
             if (data.error) {
                 alert(data.error);
             } else {
-                // Відображення імені гравця
-                document.getElementById(`place${placeId}`).innerText = `${data.player_name} Place №${placeId}`;
+                // Отримуємо DOM-елемент місця за його ID
+                const placeElement = document.getElementById(`place${placeId}`);
+
+                // Створюємо текст для відображення номера місця
+                const playerPlaceText = document.createTextNode(`${data.player_name} Place №${data.place_number}`);
+
+                // Очищаємо вміст місця
+                placeElement.innerHTML = '';
+
+                // Додаємо текст з номером місця до місця
+                placeElement.appendChild(playerPlaceText);
             }
         })
         .catch(error => console.error('Error:', error));
@@ -173,11 +275,6 @@
     }
     </script>
 
-    {% if user.is_authenticated and user == room.creator %}
-        <form method="post" action="{% url 'start_game' room.id %}">
-            {% csrf_token %}
-            <button type="submit">Start Game</button>
-        </form>
-    {% endif %}
+
 </body>
 </html>

@@ -62,7 +62,7 @@ class Place(models.Model):
     room = models.ForeignKey('Room', on_delete=models.CASCADE)
     player_name = models.CharField(max_length=100, blank=True, null=True)
     character_card = models.ForeignKey('CharacterCard', on_delete=models.SET_NULL, null=True, blank=True)
-
+    turn_finished = models.BooleanField(default=False)
     def __str__(self):
         return f'Character Card for {self.player_name}'
 
