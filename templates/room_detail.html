@@ -31,7 +31,9 @@
         {% if room.current_turn_player %}
             <p id="currentTurnPlayer">{{ room.current_turn_player.username }}</p>
             {% if room.current_turn_player == user %}
-                <button class="end-turn-button" data-room-id="{{ room_id }}">End Turn</button>
+                {% if not place.turn_finished and not place.can_end_turn %}
+                    <button class="end-turn-button" data-room-id="{{ room_id }}">End Turn</button>
+                {% endif %}
             {% endif %}
         {% else %}
             <p>Гра ще не почалася або немає поточного гравця</p>
@@ -138,43 +140,89 @@
             <button type="submit">Start Game</button>
         </form>
     {% endif %}
-
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>    
     <script>
-        
+        function vote() {
+            var selectedPlayerId = $("#playerSelect").val(); // Отримати ідентифікатор вибраного гравця
+            $.ajax({
+                type: "POST",
+                url: "{% url 'vote_endpoint' %}", // Замініть це на URL вашого ендпоінту для голосування
+                data: {
+                    'selected_player_id': selectedPlayerId,
+                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                },
+                success: function(response) {
+                    // Обробити відповідь від сервера, наприклад, оновити сторінку або показати повідомлення
+                    alert(response.message);
+                },
+                error: function(xhr, status, error) {
+                    // Обробка помилки, якщо така виникла
+                    console.error(error);
+                }
+            });
+        }
         // Обробник кліків для кнопки "End Turn"
     function handleEndTurnClick(event) {
+        console.log('Button clicked!');
         // Отримуємо номер кімнати з атрибута "data-room-id"
         var roomId = event.target.getAttribute('data-room-id');
         // Викликаємо функцію endTurn з номером кімнати
         endTurn(roomId);
     }
-    
+
     // Додаємо обробник кліків до всіх кнопок з класом "end-turn-button"
     var endTurnButtons = document.querySelectorAll('.end-turn-button');
     endTurnButtons.forEach(function(button) {
         button.addEventListener('click', handleEndTurnClick);
     });
-    
+
     function endTurn(roomId) {
-        var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-    
-        fetch(`/end_turn/${roomId}/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': csrfToken,
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: ''
-        })
-        .then(response => {
-            if (response.ok) {
-                location.reload();
-            } else {
-                alert('Failed to end turn');
-            }
-        })
-        .catch(error => console.error('Error:', error));
+            var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            fetch(`/end_turn/${roomId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: ''
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Відключення кнопки "End Turn" для поточного гравця
+                    var currentTurnButton = document.querySelector('.end-turn-button[data-room-id="' + roomId + '"]');
+                    currentTurnButton.disabled = true;
+
+                    // Активація кнопки "End Turn" для наступного гравця
+                    var nextPlayerButton = getNextPlayerButton();
+                    if (nextPlayerButton) {
+                        nextPlayerButton.disabled = false;
+                    }
+
+                    // Оновлення сторінки для відображення оновлених даних
+                    location.reload();
+                } else {
+                    alert('Failed to end turn');
+                }
+            })
+            .catch(error => console.error('Error:', error));
     }
+
+        function getNextPlayerButton() {
+            // Отримання списку всіх кнопок "End Turn"
+            var endTurnButtons = document.querySelectorAll('.end-turn-button');
+
+            // Пошук наступної кнопки "End Turn" після поточного гравця
+            for (var i = 0; i < endTurnButtons.length; i++) {
+                if (!endTurnButtons[i].disabled) {
+                    // Повернення знайденої кнопки
+                    return endTurnButtons[i + 1];
+                }
+            }
+
+            // Якщо немає наступної кнопки, повертаємо null
+            return null;
+        }
         
     function vote() {
             var selectedPlayer = document.getElementById("playerSelect").value;

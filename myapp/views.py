@@ -197,13 +197,71 @@ def endTurn(request, room_id):
     if not place:
         return JsonResponse({'error': 'Ви не перебуваєте в цій кімнаті'}, status=400)
 
+    # Перевірити, чи хід гравця вже завершено
+    if place.turn_finished:
+        return JsonResponse({'error': 'Ви вже завершили свій хід'}, status=400)
+
     # Позначити хід гравця як завершений
     place.turn_finished = True
+    place.can_end_turn = False  # Змінити поле can_end_turn на False
     place.save()
+
+    # Отримати ідентифікатор поточного місця
+    current_place_id = place.id
+
+    # Отримати наступного гравця
+    next_place = Place.objects.filter(room=room, id__gt=current_place_id).first()
+    all_players_finished_turn = all(place.turn_finished for place in room.place_set.all())
+    # Перевірка, чи є наступний гравець
+    if next_place is None:
+        # Якщо немає наступного гравця, візьмемо першого гравця
+        if all_players_finished_turn:
+            # Якщо всі гравці завершили хід, почати голосування за вигнання гравця
+            start_voting(room)
+
+    # Отримати користувача пов'язаного з наступним місцем
+    next_player_name = next_place.player_name
+
+    # Отримати об'єкт користувача за його ім'ям
+    next_player = User.objects.get(username=next_player_name)
+
+    # Оновити поле current_turn_player на наступного гравця
+    room.current_turn_player = next_player
+    room.save()
 
     # Повернути підтвердження у форматі JSON
     return JsonResponse({'message': 'Хід завершено успішно'})
 
+
+def start_voting(request, room_id):
+    room = get_object_or_404(Room, id=room_id)
+
+    # Перевірка, чи гра взагалі розпочалася
+    if not room.game_started:
+        return JsonResponse({'error': 'Гра ще не розпочалася'}, status=400)
+
+    # Отримати всі місця у кімнаті
+    places_in_room = Place.objects.filter(room=room)
+
+    # Перевірка, чи всі гравці завершили хід
+    all_players_finished_turn = all(place.turn_finished for place in places_in_room)
+
+    if not all_players_finished_turn:
+        return JsonResponse({'error': 'Не всі гравці завершили свій хід'}, status=400)
+
+    # Позначаємо початок голосування
+    room.voting_started = True
+    room.save()
+
+    return JsonResponse({'message': 'Голосування розпочато'})
+
+def vote_endpoint(request):
+    if request.method == 'POST':
+        selected_player_id = request.POST.get('selected_player_id')
+        # Тут ви можете обробити голосування і повернути відповідь
+        return JsonResponse({'message': 'Ваш голос прийнято'})
+    else:
+        return JsonResponse({'error': 'Метод не підтримується'}, status=405)
 
 def character_info(request):
     user = request.user
@@ -277,7 +335,7 @@ def check_end_turn(request):
     places_in_room = Place.objects.filter(room=room)
 
     # Перевіряємо, чи всі гравці в кімнаті натиснули кнопку "End Turn"
-    all_players_finished_turn = all(place.finished_turn for place in places_in_room)
+    all_players_finished_turn = all(place.turn_finished for place in places_in_room)
 
     # Повертаємо відповідь у форматі JSON
     return JsonResponse({'all_players_finished_turn': all_players_finished_turn})

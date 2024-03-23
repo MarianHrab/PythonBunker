@@ -16,6 +16,7 @@ class Room(models.Model):
     current_player = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='current_player_rooms')
     game_started = models.BooleanField(default=False)
     current_turn_player = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='current_turn_player_rooms')
+    turn_ended = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name
@@ -63,6 +64,7 @@ class Place(models.Model):
     player_name = models.CharField(max_length=100, blank=True, null=True)
     character_card = models.ForeignKey('CharacterCard', on_delete=models.SET_NULL, null=True, blank=True)
     turn_finished = models.BooleanField(default=False)
+    can_end_turn = models.BooleanField(default=False)
     def __str__(self):
         return f'Character Card for {self.player_name}'
 
