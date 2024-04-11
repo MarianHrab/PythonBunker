@@ -13,13 +13,17 @@ class Room(models.Model):
     max_players = models.IntegerField()
     password = models.CharField(max_length=100, blank=True, null=True)
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_rooms')
-    current_player = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='current_player_rooms')
+    current_player = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                       related_name='current_player_rooms')
     game_started = models.BooleanField(default=False)
-    current_turn_player = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='current_turn_player_rooms')
+    current_turn_player = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                            related_name='current_turn_player_rooms')
     turn_ended = models.BooleanField(default=False)
+    voting_started = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name
+
 
 @receiver(pre_delete, sender=Room)
 def delete_character_cards(sender, instance, **kwargs):
@@ -31,6 +35,7 @@ def delete_character_cards(sender, instance, **kwargs):
 
     # Видалити всі знайдені CharacterCard
     character_cards.delete()
+
 
 class CharacterCard(models.Model):
     player = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -59,13 +64,13 @@ class CharacterCard(models.Model):
     ADDITIONAL_INFO_OPTIONS = ADDITIONAL_INFO_OPTIONS
     LUGGAGE_OPTIONS = LUGGAGE_OPTIONS
 
+
 class Place(models.Model):
     room = models.ForeignKey('Room', on_delete=models.CASCADE)
     player_name = models.CharField(max_length=100, blank=True, null=True)
     character_card = models.ForeignKey('CharacterCard', on_delete=models.SET_NULL, null=True, blank=True)
     turn_finished = models.BooleanField(default=False)
-    can_end_turn = models.BooleanField(default=False)
+    can_end_turn = models.BooleanField(default=True)
+
     def __str__(self):
         return f'Character Card for {self.player_name}'
-
-

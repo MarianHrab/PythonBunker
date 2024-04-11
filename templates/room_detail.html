@@ -122,16 +122,16 @@
         <li>Кімната порожня</li>
     {% endfor %}
     </ul>
-    
-    <select id="playerSelect" {% if not all_players_finished_turn %} disabled {% endif %}>
+
+   <select id="playerSelect" {% if all_players_finished_turn %} disabled {% endif %}>
         {% for player in players %}
             {% if player != user %}
                 <option value="{{ player.id }}">{{ player.username }}</option>
             {% endif %}
         {% endfor %}
     </select>
-    
-    <button onclick="vote()" {% if not all_players_finished_turn %} disabled {% endif %}>Проголосувати</button>
+
+    <button onclick="vote()" {% if all_players_finished_turn %} disabled {% endif %}>Проголосувати</button>
 
 
     {% if user.is_authenticated and user == room.creator and not room.game_started %}

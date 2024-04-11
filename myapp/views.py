@@ -185,7 +185,7 @@ def start_game(request, room_id):
 def endTurn(request, room_id):
     # Отримати об'єкт кімнати за room_id
     room = get_object_or_404(Room, id=room_id)
-
+    voting_id_room = room_id
     # Перевірка, чи гра взагалі розпочалася
     if not room.game_started:
         return JsonResponse({'error': 'Гра ще не розпочалася'}, status=400)
@@ -201,9 +201,13 @@ def endTurn(request, room_id):
     if place.turn_finished:
         return JsonResponse({'error': 'Ви вже завершили свій хід'}, status=400)
 
+    # Перевірити, чи гравець може закінчити хід
+    if not place.can_end_turn:
+        return JsonResponse({'error': 'Ви не можете завершити свій хід'}, status=400)
+
     # Позначити хід гравця як завершений
     place.turn_finished = True
-    place.can_end_turn = False  # Змінити поле can_end_turn на False
+    place.can_end_turn = False
     place.save()
 
     # Отримати ідентифікатор поточного місця
@@ -217,23 +221,22 @@ def endTurn(request, room_id):
         # Якщо немає наступного гравця, візьмемо першого гравця
         if all_players_finished_turn:
             # Якщо всі гравці завершили хід, почати голосування за вигнання гравця
-            start_voting(room)
+            start_voting(voting_id_room)
+        return JsonResponse({'message': 'Всі гравці завершили хід'})
+    else:
+        next_player_name = next_place.player_name
+        # Отримати об'єкт користувача за його ім'ям
+        next_player = User.objects.get(username=next_player_name)
 
-    # Отримати користувача пов'язаного з наступним місцем
-    next_player_name = next_place.player_name
+        # Оновити поле current_turn_player на наступного гравця
+        room.current_turn_player = next_player
+        room.save()
 
-    # Отримати об'єкт користувача за його ім'ям
-    next_player = User.objects.get(username=next_player_name)
-
-    # Оновити поле current_turn_player на наступного гравця
-    room.current_turn_player = next_player
-    room.save()
-
-    # Повернути підтвердження у форматі JSON
-    return JsonResponse({'message': 'Хід завершено успішно'})
+        # Повернути підтвердження у форматі JSON
+        return JsonResponse({'message': 'Хід завершено успішно'})
 
 
-def start_voting(request, room_id):
+def start_voting(room_id):
     room = get_object_or_404(Room, id=room_id)
 
     # Перевірка, чи гра взагалі розпочалася
