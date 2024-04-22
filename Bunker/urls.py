@@ -18,4 +18,5 @@ urlpatterns = [
     path('toggle_visibility/<int:character_card_id>/<str:characteristic>/', views.toggle_visibility, name='toggle_visibility'),
     path('end_turn/<int:room_id>/', views.endTurn, name='end_turn'),
     path('vote/', views.vote_endpoint, name='vote_endpoint'),
+
 ]

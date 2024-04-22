@@ -37,6 +37,8 @@ def delete_character_cards(sender, instance, **kwargs):
     character_cards.delete()
 
 
+
+
 class CharacterCard(models.Model):
     player = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     bio = models.TextField(blank=True)
@@ -74,3 +76,13 @@ class Place(models.Model):
 
     def __str__(self):
         return f'Character Card for {self.player_name}'
+
+
+class Vote(models.Model):
+    voter = models.ForeignKey(User, on_delete=models.CASCADE)  # Гравець, який голосує
+    target_player = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_votes')  # Гравець, на якого голосують
+    room = models.ForeignKey(Room, on_delete=models.CASCADE)  # Кімната, де відбувається голосування
+    created_at = models.DateTimeField(auto_now_add=True)  # Дата та час створення голосу
+
+    def __str__(self):
+        return f"Vote from {self.voter.username} to {self.target_player.username} in room {self.room.name}"

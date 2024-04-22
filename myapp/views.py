@@ -11,10 +11,11 @@ from django.views.decorators.http import require_http_methods
 from .models import Place, CharacterCard
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
-from .models import Room
+from .models import Room, Vote
 import random
 from django.db import transaction
 from django.db.models import Min, F
+from collections import Counter
 
 from .utils import (
     BIO_OPTIONS,
@@ -254,17 +255,86 @@ def start_voting(room_id):
 
     # Позначаємо початок голосування
     room.voting_started = True
+    room.turn_ended = True
     room.save()
 
     return JsonResponse({'message': 'Голосування розпочато'})
 
+
 def vote_endpoint(request):
     if request.method == 'POST':
-        selected_player_id = request.POST.get('selected_player_id')
-        # Тут ви можете обробити голосування і повернути відповідь
-        return JsonResponse({'message': 'Ваш голос прийнято'})
+        selected_player_name = request.POST.get('selected_player_name') # змінив на selected_player_name
+
+        # Перевіряємо, чи існує гравець з вибраним ім'ям
+        if not selected_player_name:
+            return JsonResponse({'error': 'Не вказано гравця для голосування'}, status=400)
+
+        # Отримуємо об'єкт гравця за його ім'ям
+        try:
+            selected_player = User.objects.get(username=selected_player_name) # змінив на username
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'Гравець з вказаним ім\'ям не існує'}, status=404)
+
+        # Отримуємо поточного користувача, який голосує (може бути доступний через request.user)
+        user = request.user
+
+        # Перевіряємо, чи гравець, за якого віддається голос, перебуває в поточній кімнаті
+        # Ця перевірка може бути необов'язковою, залежно від вашої логіки
+        room = get_object_or_404(Room, id=request.session.get('room_id'))  # Припустимо, що room_id зберігається у сесії
+        if not Place.objects.filter(room=room, player=user).exists():
+            return JsonResponse({'error': 'Ви не перебуваєте в цій кімнаті'}, status=403)
+
+        # Тут ви можете обробити голосування, створити об'єкт Vote або оновити відповідні поля
+        # Наприклад, якщо у вас є модель Vote, ви можете створити новий запис:
+        Vote.objects.create(voter=user, selected_player=selected_player)
+
+        # Викликаємо функцію для завершення голосування і визначення переможця
+        winners = end_voting(room.id)
+
+        if winners:
+            return JsonResponse({'message': f'Голосування завершено. Переможці: {", ".join([winner.username for winner in winners])}'})
+        else:
+            return JsonResponse({'message': 'Голосування завершено, але переможці не визначені'})
     else:
         return JsonResponse({'error': 'Метод не підтримується'}, status=405)
+
+
+def calculate_votes(room_id):
+    room = Room.objects.get(id=room_id)
+    all_votes = Vote.objects.filter(room=room)
+    vote_counter = Counter(vote.target_player for vote in all_votes)
+    return vote_counter
+
+
+def determine_winner(room_id):
+    vote_counter = calculate_votes(room_id)
+    if vote_counter:
+        max_votes = max(vote_counter.values())
+        winners = [player for player, votes in vote_counter.items() if votes == max_votes]
+        return winners
+    else:
+        return None
+
+
+def end_voting(room_id):
+    room = Room.objects.get(id=room_id)
+    votes = Vote.objects.filter(room=room)
+
+    # Підрахунок голосів за кожного гравця
+    vote_count = {}
+    for vote in votes:
+        vote_count[vote.target_player.username] = vote_count.get(vote.target_player.username, 0) + 1
+
+    # Визначення переможця (гравця з найбільшою кількістю голосів)
+    max_votes = max(vote_count.values())
+    winners = [player for player, count in vote_count.items() if count == max_votes]
+
+    # Виведення повідомлення з ім'ям переможця
+    winner_names = ", ".join(winners)
+    print(f"Гравець(і) {winner_names} виграв(ли) голосування.")
+
+    return winners
+
 
 def character_info(request):
     user = request.user

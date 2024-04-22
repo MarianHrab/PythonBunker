@@ -32,7 +32,9 @@
             <p id="currentTurnPlayer">{{ room.current_turn_player.username }}</p>
             {% if room.current_turn_player == user %}
                 {% if not place.turn_finished and not place.can_end_turn %}
-                    <button class="end-turn-button" data-room-id="{{ room_id }}">End Turn</button>
+                    {% if not room.turn_ended and not room.voting_started %}
+                        <button class="end-turn-button" data-room-id="{{ room_id }}">End Turn</button>
+                    {% endif %}
                 {% endif %}
             {% endif %}
         {% else %}
@@ -74,7 +76,7 @@
                             {% endif %}
                             <li>Baggage: {{ character_card.luggage }}</li>
                             {% if room.current_turn_player == user %}
-                                <button onclick="toggleVisibility('{{ character_card.id }}', 'luggage')">Show Luggage</button>
+                                <button onclick="toggleVisibility('{{ character_card.id }}', 'luggage')">Show Baggage</button>
                             {% endif %}
                     {% else %}
                         {% if not character_card.bio_hidden %}
@@ -123,15 +125,21 @@
     {% endfor %}
     </ul>
 
-   <select id="playerSelect" {% if all_players_finished_turn %} disabled {% endif %}>
-        {% for player in players %}
-            {% if player != user %}
-                <option value="{{ player.id }}">{{ player.username }}</option>
+    <form id="voteForm" method="post" action="{% url 'vote_endpoint' %}">
+        {% csrf_token %}
+        <input type="hidden" name="room_id" value="{{ room.id }}">
+        <label for="selected_player_id">Виберіть гравця:</label>
+        <select id="selected_player_id">
+            {% if room.turn_ended and room.voting_started %}
+                {% for player in players %}
+                    {% if player != user %}
+                        <option value="{{ player.id }}">{{ player.username }}</option>
+                    {% endif %}
+                {% endfor %}
             {% endif %}
-        {% endfor %}
-    </select>
-
-    <button onclick="vote()" {% if all_players_finished_turn %} disabled {% endif %}>Проголосувати</button>
+        </select>
+        <button type="submit" {% if not room.turn_ended and not room.voting_started %} disabled {% endif %}>Проголосувати</button>
+    </form>
 
 
     {% if user.is_authenticated and user == room.creator and not room.game_started %}
@@ -140,28 +148,37 @@
             <button type="submit">Start Game</button>
         </form>
     {% endif %}
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>    
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+
     <script>
         function vote() {
-            var selectedPlayerId = $("#playerSelect").val(); // Отримати ідентифікатор вибраного гравця
+            var selectedPlayerId = $("#selected_player_id").val();
+
+            // Перевірка, чи вибраний гравець перед відправкою форми
+            if (!selectedPlayerId) {
+                alert("Будь ласка, виберіть гравця для голосування.");
+                return; // Припинити виконання функції, якщо гравець не вибрано
+            }
+
+            var roomId = $("#voteForm input[name='room_id']").val();
+            var url = "{% url 'vote_endpoint' %}";
             $.ajax({
                 type: "POST",
-                url: "{% url 'vote_endpoint' %}", // Замініть це на URL вашого ендпоінту для голосування
+                url: url,
                 data: {
                     'selected_player_id': selectedPlayerId,
+                    'room_id': roomId,
                     'csrfmiddlewaretoken': '{{ csrf_token }}'
                 },
                 success: function(response) {
-                    // Обробити відповідь від сервера, наприклад, оновити сторінку або показати повідомлення
                     alert(response.message);
                 },
                 error: function(xhr, status, error) {
-                    // Обробка помилки, якщо така виникла
                     console.error(error);
                 }
             });
         }
-        // Обробник кліків для кнопки "End Turn"
     function handleEndTurnClick(event) {
         console.log('Button clicked!');
         // Отримуємо номер кімнати з атрибута "data-room-id"
@@ -224,28 +241,7 @@
             return null;
         }
         
-    function vote() {
-            var selectedPlayer = document.getElementById("playerSelect").value;
-            var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
-            fetch(`/vote/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': csrfToken,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ selectedPlayer: selectedPlayer })
-            })
-            .then(response => {
-                if (response.ok) {
-                    // Додайте обробник для випадаючого меню після голосування
-                    // Тут ви можете відобразити повідомлення про очікування інших гравців
-                } else {
-                    alert('Failed to vote');
-                }
-            })
-            .catch(error => console.error('Error:', error));
-        }
         // Знаходимо всі кнопки з класом "end-turn-button"
         function toggleVisibility(characterCardId, characteristic) {
             // Отримати CSRF-токен
