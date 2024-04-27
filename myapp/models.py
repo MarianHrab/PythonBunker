@@ -73,6 +73,8 @@ class Place(models.Model):
     character_card = models.ForeignKey('CharacterCard', on_delete=models.SET_NULL, null=True, blank=True)
     turn_finished = models.BooleanField(default=False)
     can_end_turn = models.BooleanField(default=True)
+    voted = models.BooleanField(default=False)
+    is_kicked = models.BooleanField(default=False)
 
     def __str__(self):
         return f'Character Card for {self.player_name}'
@@ -85,4 +87,4 @@ class Vote(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)  # Дата та час створення голосу
 
     def __str__(self):
-        return f"Vote from {self.voter.username} to {self.target_player.username} in room {self.room.name}"
+        return f"Vote from {self.voter.username} to {self.target_player.username} in room {self.room.id}"

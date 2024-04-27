@@ -16,6 +16,8 @@ import random
 from django.db import transaction
 from django.db.models import Min, F
 from collections import Counter
+from django.db.models import Count
+from django.core.serializers.json import DjangoJSONEncoder
 
 from .utils import (
     BIO_OPTIONS,
@@ -263,40 +265,89 @@ def start_voting(room_id):
 
 def vote_endpoint(request):
     if request.method == 'POST':
-        selected_player_name = request.POST.get('selected_player_name') # змінив на selected_player_name
+        selected_player_name = request.POST.get('selected_player_name')
 
-        # Перевіряємо, чи існує гравець з вибраним ім'ям
+        # Перевірка, чи вибраний гравець переданий у запиті
         if not selected_player_name:
             return JsonResponse({'error': 'Не вказано гравця для голосування'}, status=400)
 
-        # Отримуємо об'єкт гравця за його ім'ям
+        # Отримання поточного користувача, який голосує
+        voter = request.user
+
+        # Отримання кімнати, у якій відбувається голосування
+        room_id = request.POST.get('room_id')
+        room = get_object_or_404(Room, id=room_id)
+
+        # Перевірка, чи гравець знаходиться у кімнаті і грає в гру
         try:
-            selected_player = User.objects.get(username=selected_player_name) # змінив на username
+            place = Place.objects.get(room=room, player_name=voter.username)
+        except Place.DoesNotExist:
+            return JsonResponse({'error': 'Ви не берете участь у цій грі або вас вже викреслено з кімнати'}, status=400)
+
+        # Отримання об'єкта гравця, на якого голосують
+        try:
+            target_player = User.objects.get(username=selected_player_name)
         except User.DoesNotExist:
-            return JsonResponse({'error': 'Гравець з вказаним ім\'ям не існує'}, status=404)
+            return JsonResponse({'error': 'Обраний гравець не знайдений'}, status=400)
 
-        # Отримуємо поточного користувача, який голосує (може бути доступний через request.user)
-        user = request.user
+        # Перевірка, чи вже голосував цей гравець у поточній кімнаті
+        existing_vote = Vote.objects.filter(voter=voter, room=room).exists()
+        if existing_vote:
+            return JsonResponse({'error': 'Ви вже проголосували у цій кімнаті'}, status=400)
 
-        # Перевіряємо, чи гравець, за якого віддається голос, перебуває в поточній кімнаті
-        # Ця перевірка може бути необов'язковою, залежно від вашої логіки
-        room = get_object_or_404(Room, id=request.session.get('room_id'))  # Припустимо, що room_id зберігається у сесії
-        if not Place.objects.filter(room=room, player=user).exists():
-            return JsonResponse({'error': 'Ви не перебуваєте в цій кімнаті'}, status=403)
+        # Створення нового голосу
+        Vote.objects.create(voter=voter, target_player=target_player, room=room)
 
-        # Тут ви можете обробити голосування, створити об'єкт Vote або оновити відповідні поля
-        # Наприклад, якщо у вас є модель Vote, ви можете створити новий запис:
-        Vote.objects.create(voter=user, selected_player=selected_player)
+        # Оновлення поля voted для гравця
+        place.voted = True
+        place.save()
 
-        # Викликаємо функцію для завершення голосування і визначення переможця
-        winners = end_voting(room.id)
+        # Перевірка, чи всі гравці вже проголосували
+        all_players_voted = all(place.voted for place in room.place_set.all())
 
-        if winners:
-            return JsonResponse({'message': f'Голосування завершено. Переможці: {", ".join([winner.username for winner in winners])}'})
+        if all_players_voted:
+            # Завершення голосування
+            winners = determine_winner(room_id)
+            # Отримання імен користувачів переможців
+            winner_names = ', '.join(winner.username for winner in winners)
+            for winner in winners:
+                winner_place = Place.objects.get(room=room, player_name=winner.username)
+                winner_place.is_kicked = True
+                winner_place.save()
+            # Створення повідомлення для pop-up
+            message = f'Гравець {winner_names} за результатом голосування'
+            print(f'Гравець {winner_names} за результатом голосування')
+            # Початок нового ходу після завершення голосування
+            start_new_turn(room_id)
+            # Відправлення JSON відповіді з повідомленням
+            return JsonResponse({'message': message}, status=200)
         else:
-            return JsonResponse({'message': 'Голосування завершено, але переможці не визначені'})
+            # Повернення повідомлення про успішне голосування
+            return JsonResponse({'message': 'Голосування зараховано'}, status=200)
     else:
         return JsonResponse({'error': 'Метод не підтримується'}, status=405)
+
+
+def start_new_turn(room_id):
+    room = Room.objects.get(id=room_id)
+
+    # Отримати всі місця у кімнаті
+    places_in_room = Place.objects.filter(room=room)
+
+    # Почати новий хід для кожного місця у кімнаті
+    for place in places_in_room:
+        place.turn_finished = False
+        place.can_end_turn = True
+        place.voted = False
+        place.save()
+
+    # Оновити статус гри
+    room.game_started = True
+    room.voting_started = False
+    room.turn_ended = False
+    room.save()
+
+    return JsonResponse({'message': 'Початок нового ходу'})
 
 
 def calculate_votes(room_id):
@@ -316,24 +367,31 @@ def determine_winner(room_id):
         return None
 
 
-def end_voting(room_id):
+def all_players_voted(room_id):
     room = Room.objects.get(id=room_id)
-    votes = Vote.objects.filter(room=room)
+    # Отримати усіх гравців, які мають бути у кімнаті
+    all_players = room.players.all()
 
-    # Підрахунок голосів за кожного гравця
-    vote_count = {}
-    for vote in votes:
-        vote_count[vote.target_player.username] = vote_count.get(vote.target_player.username, 0) + 1
+    # Отримати гравців, які ще не проголосували
+    non_voting_players = all_players.exclude(vote__room=room)
 
-    # Визначення переможця (гравця з найбільшою кількістю голосів)
-    max_votes = max(vote_count.values())
-    winners = [player for player, count in vote_count.items() if count == max_votes]
+    # Якщо всі гравці проголосували, то non_voting_players буде пустим списком
+    return not non_voting_players.exists()
 
-    # Виведення повідомлення з ім'ям переможця
-    winner_names = ", ".join(winners)
-    print(f"Гравець(і) {winner_names} виграв(ли) голосування.")
 
-    return winners
+def get_vote_results(request, room_id):
+    # Отримати кількість голосів за кожного гравця у вказаній кімнаті
+    vote_counts = (
+        Vote.objects.filter(room_id=room_id)
+        .values('target_player__username')  # Групувати за іменем гравця, за якого проголосували
+        .annotate(total_votes=Count('id'))  # Підрахунок кількості голосів за кожного гравця
+    )
+
+    # Перетворюємо QuerySet в список словників
+    vote_counts_list = list(vote_counts)
+
+    # Повертаємо результат у форматі JSON
+    return JsonResponse({'voteCounts': vote_counts_list}, encoder=DjangoJSONEncoder)
 
 
 def character_info(request):

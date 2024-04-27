@@ -44,102 +44,108 @@
     <h2>Список гравців:</h2>
     <ul>
         {% for place in places %}
-        <li>{{ place.player_name }}</li>
-        {% with character_card=place.character_card %}
-            {% if character_card %}
-                <ul>
-                    {% if character_card.player == request.user %}
-                            <!-- Показуємо кнопки "Show" тільки поточному гравцеві -->
-                            <li>Bio: {{ character_card.bio }}</li>
-                            {% if room.current_turn_player == user %}
-                                <button onclick="toggleVisibility('{{ character_card.id }}', 'bio')">Show bio</button>
+            {% if not place.player_name.is_kicked%}
+                <li>{{ place.player_name }}</li>
+                {% with character_card=place.character_card %}
+                    {% if character_card %}
+                        <ul>
+                            {% if character_card.player == request.user %}
+                                <!-- Показуємо кнопки "Show" тільки поточному гравцеві -->
+                                <li>Bio: {{ character_card.bio }}</li>
+                                        {% if room.current_turn_player == user %}
+                                            <button onclick="toggleVisibility('{{ character_card.id }}', 'bio')">Show bio</button>
+                                        {% endif %}
+                                        <li>Health: {{ character_card.health }}</li>
+                                        {% if room.current_turn_player == user %}
+                                            <button onclick="toggleVisibility('{{ character_card.id }}', 'health')">Show Health</button>
+                                        {% endif %}
+                                        <li>Phobia: {{ character_card.phobia }}</li>
+                                        {% if room.current_turn_player == user %}
+                                            <button onclick="toggleVisibility('{{ character_card.id }}', 'phobia')">Show Phobia</button>
+                                        {% endif %}
+                                        <li>Hobby: {{ character_card.hobby }}</li>
+                                        {% if room.current_turn_player == user %}
+                                            <button onclick="toggleVisibility('{{ character_card.id }}', 'hobby')">Show Hobby</button>
+                                        {% endif %}
+                                        <li>Knowledge: {{ character_card.knowledge }}</li>
+                                        {% if room.current_turn_player == user %}
+                                            <button onclick="toggleVisibility('{{ character_card.id }}', 'knowledge')">Show Knowledge</button>
+                                        {% endif %}
+                                        <li>Additional Info: {{ character_card.additional_info }}</li>
+                                        {% if room.current_turn_player == user %}
+                                            <button onclick="toggleVisibility('{{ character_card.id }}', 'additional_info')">Show Additional Info</button>
+                                        {% endif %}
+                                        <li>Baggage: {{ character_card.luggage }}</li>
+                                        {% if room.current_turn_player == user %}
+                                            <button onclick="toggleVisibility('{{ character_card.id }}', 'luggage')">Show Baggage</button>
+                                        {% endif %}
+                            {% else %}
+                                {% if not character_card.bio_hidden %}
+                                        <li>Bio: {{ character_card.bio }}</li>
+                                    {% else %}
+                                        <li>Bio: Hidden</li>
+                                    {% endif %}
+                                    {% if not character_card.health_hidden %}
+                                        <li>Health: {{ character_card.health }}</li>
+                                    {% else %}
+                                        <li>Health: Hidden</li>
+                                    {% endif %}
+                                    {% if not character_card.phobia_hidden %}
+                                        <li>Phobia: {{ character_card.phobia }}</li>
+                                    {% else %}
+                                        <li>Phobia: Hidden</li>
+                                    {% endif %}
+                                    {% if not character_card.hobby_hidden %}
+                                        <li>Hobby: {{ character_card.hobby }}</li>
+                                    {% else %}
+                                        <li>Hobby: Hidden</li>
+                                    {% endif %}
+                                    {% if not character_card.knowledge_hidden %}
+                                        <li>Knowledge: {{ character_card.knowledge }}</li>
+                                    {% else %}
+                                        <li>Knowledge: Hidden</li>
+                                    {% endif %}
+                                    {% if not character_card.additional_info_hidden %}
+                                        <li>Additional Info: {{ character_card.additional_info }}</li>
+                                    {% else %}
+                                        <li>Additional Info: Hidden</li>
+                                    {% endif %}
+                                    {% if not character_card.luggage_hidden %}
+                                        <li>Baggage: {{ character_card.luggage }}</li>
+                                    {% else %}
+                                        <li>Baggage: Hidden</li>
+                                    {% endif %}
                             {% endif %}
-                            <li>Health: {{ character_card.health }}</li>
-                            {% if room.current_turn_player == user %}
-                                <button onclick="toggleVisibility('{{ character_card.id }}', 'health')">Show Health</button>
-                            {% endif %}
-                            <li>Phobia: {{ character_card.phobia }}</li>
-                            {% if room.current_turn_player == user %}
-                                <button onclick="toggleVisibility('{{ character_card.id }}', 'phobia')">Show Phobia</button>
-                            {% endif %}
-                            <li>Hobby: {{ character_card.hobby }}</li>
-                            {% if room.current_turn_player == user %}
-                                <button onclick="toggleVisibility('{{ character_card.id }}', 'hobby')">Show Hobby</button>
-                            {% endif %}
-                            <li>Knowledge: {{ character_card.knowledge }}</li>
-                            {% if room.current_turn_player == user %}
-                                <button onclick="toggleVisibility('{{ character_card.id }}', 'knowledge')">Show Knowledge</button>
-                            {% endif %}
-                            <li>Additional Info: {{ character_card.additional_info }}</li>
-                            {% if room.current_turn_player == user %}
-                                <button onclick="toggleVisibility('{{ character_card.id }}', 'additional_info')">Show Additional Info</button>
-                            {% endif %}
-                            <li>Baggage: {{ character_card.luggage }}</li>
-                            {% if room.current_turn_player == user %}
-                                <button onclick="toggleVisibility('{{ character_card.id }}', 'luggage')">Show Baggage</button>
-                            {% endif %}
+                        </ul>
                     {% else %}
-                        {% if not character_card.bio_hidden %}
-                            <li>Bio: {{ character_card.bio }}</li>
-                        {% else %}
-                            <li>Bio: Hidden</li>
-                        {% endif %}
-                        {% if not character_card.health_hidden %}
-                            <li>Health: {{ character_card.health }}</li>
-                        {% else %}
-                            <li>Health: Hidden</li>
-                        {% endif %}
-                        {% if not character_card.phobia_hidden %}
-                            <li>Phobia: {{ character_card.phobia }}</li>
-                        {% else %}
-                            <li>Phobia: Hidden</li>
-                        {% endif %}
-                        {% if not character_card.hobby_hidden %}
-                            <li>Hobby: {{ character_card.hobby }}</li>
-                        {% else %}
-                            <li>Hobby: Hidden</li>
-                        {% endif %}
-                        {% if not character_card.knowledge_hidden %}
-                            <li>Knowledge: {{ character_card.knowledge }}</li>
-                        {% else %}
-                            <li>Knowledge: Hidden</li>
-                        {% endif %}
-                        {% if not character_card.additional_info_hidden %}
-                            <li>Additional Info: {{ character_card.additional_info }}</li>
-                        {% else %}
-                            <li>Additional Info: Hidden</li>
-                        {% endif %}
-                        {% if not character_card.luggage_hidden %}
-                            <li>Baggage: {{ character_card.luggage }}</li>
-                        {% else %}
-                            <li>Baggage: Hidden</li>
-                        {% endif %}
+                        <p>No Character Card available for this player</p>
                     {% endif %}
-                </ul>
-            {% else %}
-                <p>No Character Card available for this player</p>
+                {% endwith %}
             {% endif %}
-        {% endwith %}
-    {% empty %}
-        <li>Кімната порожня</li>
-    {% endfor %}
+        {% empty %}
+            <li>Кімната порожня</li>
+        {% endfor %}
     </ul>
 
-    <form id="voteForm" method="post" action="{% url 'vote_endpoint' %}">
-        {% csrf_token %}
-        <input type="hidden" name="room_id" value="{{ room.id }}">
-        <label for="selected_player_id">Виберіть гравця:</label>
-        <select id="selected_player_id">
-            {% if room.turn_ended and room.voting_started %}
-                {% for player in players %}
-                    {% if player != user %}
-                        <option value="{{ player.id }}">{{ player.username }}</option>
-                    {% endif %}
-                {% endfor %}
-            {% endif %}
-        </select>
-        <button type="submit" {% if not room.turn_ended and not room.voting_started %} disabled {% endif %}>Проголосувати</button>
-    </form>
+
+    {% if room.voting_started %}
+        <form id="voteForm" method="post" action="{% url 'vote_endpoint' %}">
+            {% csrf_token %}
+            <input type="hidden" name="room_id" value="{{ room.id }}">
+            <label for="selected_player_name">Виберіть гравця:</label>
+            <select id="selected_player_name" name="selected_player_name">
+                {% if room.turn_ended and room.voting_started %}
+                    {% for player in players %}
+                        {% if player != user %}
+                            <option value="{{ player.username }}">{{ player.username }}</option>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            </select>
+            <button type="submit" {% if not room.turn_ended and not room.voting_started %} disabled {% endif %}>Проголосувати</button>
+        </form>
+    {% endif %}
+
 
 
     {% if user.is_authenticated and user == room.creator and not room.game_started %}
@@ -148,15 +154,96 @@
             <button type="submit">Start Game</button>
         </form>
     {% endif %}
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 
+    {% if room.voting_started == True %}
+        <h3>Список гравців і кількість голосів за них:</h3>
+        <ul id="voteResultsList">
+            <!-- Тут буде виведений результат голосування через JavaScript -->
+        </ul>
+        <button onclick="getVoteResults({{ room.id }})">Отримати результати голосування</button>
+    {% endif %}
+
+
+
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
 
     <script>
+        // Відправляємо запит до vote_endpoint
+        $.ajax({
+            type: "POST",
+            url: "/vote_endpoint/",
+            data: {
+                selected_player_name: selectedPlayerName,
+                room_id: roomId,
+                csrfmiddlewaretoken: csrftoken
+            },
+            success: function(response) {
+                // Перевіряємо, чи є повідомлення про гравця-переможця
+                if (response.message) {
+                    // Показуємо pop-up з повідомленням
+                    Swal.fire({
+                        title: 'Голосування завершено',
+                        text: response.message,
+                        icon: 'success'
+                    });
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+            }
+        });
+    </script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Отримуємо ідентифікатор кімнати з HTML-елемента
+            var roomId = document.getElementById("roomId").value;
+
+            // Викликаємо функцію для отримання результатів голосування
+            getVoteResults(roomId);
+        });
+        // Функція для отримання результатів голосування через AJAX-запит
+        function getVoteResults(roomId) {
+            // Виконуємо AJAX-запит для отримання результатів голосування
+            $.ajax({
+                type: "GET",
+                url: `/get_vote_results/${roomId}/`, // URL для отримання результатів голосування
+                success: function(response) {
+                    // Викликаємо функцію для відображення результатів голосування
+                    displayVoteResults(response.voteCounts);
+                },
+                error: function(xhr, status, error) {
+                    console.error(error);
+                }
+            });
+        }
+
+        // Функція для відображення результатів голосування
+        function displayVoteResults(voteCounts) {
+            // Отримуємо список для відображення результатів голосування
+            var voteResultsList = document.getElementById("voteResultsList");
+
+            // Очищаємо список
+            voteResultsList.innerHTML = '';
+
+            // Додаємо кожен результат голосування до списку
+            voteCounts.forEach(function(item) {
+                var listItem = document.createElement('li');
+                listItem.textContent = `${item.target_player__username}: ${item.total_votes}`;
+                voteResultsList.appendChild(listItem);
+            });
+
+            // Показуємо розділ з результатами голосування
+            document.getElementById("voteResultsSection").style.display = "block";
+        }
+
         function vote() {
-            var selectedPlayerId = $("#selected_player_id").val();
+            var selectedPlayerName = $("#selected_player_name").val(); // Змінено селектор на selected_player_name
 
             // Перевірка, чи вибраний гравець перед відправкою форми
-            if (!selectedPlayerId) {
+            if (!selectedPlayerName) {
                 alert("Будь ласка, виберіть гравця для голосування.");
                 return; // Припинити виконання функції, якщо гравець не вибрано
             }
@@ -167,7 +254,7 @@
                 type: "POST",
                 url: url,
                 data: {
-                    'selected_player_id': selectedPlayerId,
+                    'selected_player_name': selectedPlayerName, // Змінено на передачу імені гравця
                     'room_id': roomId,
                     'csrfmiddlewaretoken': '{{ csrf_token }}'
                 },
