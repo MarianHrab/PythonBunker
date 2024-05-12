@@ -129,7 +129,7 @@
 
 
     {% if room.voting_started %}
-        <form id="voteForm" method="post" action="{% url 'vote_endpoint' %}">
+        <form id="voteForm" method="post" action="{% url 'vote_endpoint' room_id=room.id %}">
             {% csrf_token %}
             <input type="hidden" name="room_id" value="{{ room.id }}">
             <label for="selected_player_name">Виберіть гравця:</label>
@@ -145,7 +145,6 @@
             <button type="submit" {% if not room.turn_ended and not room.voting_started %} disabled {% endif %}>Проголосувати</button>
         </form>
     {% endif %}
-
 
 
     {% if user.is_authenticated and user == room.creator and not room.game_started %}
@@ -249,7 +248,7 @@
             }
 
             var roomId = $("#voteForm input[name='room_id']").val();
-            var url = "{% url 'vote_endpoint' %}";
+            var url = "{% url 'vote_endpoint' room_id=room.id %}";
             $.ajax({
                 type: "POST",
                 url: url,

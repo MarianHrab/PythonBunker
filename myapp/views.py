@@ -1,9 +1,7 @@
-from django.shortcuts import render
 from django.http import HttpResponse
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import login, authenticate
-from django.shortcuts import render, redirect
-from .models import Room, Place
+from django.shortcuts import redirect
 from .forms import RoomForm
 from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404
@@ -14,7 +12,6 @@ from django.contrib.auth.decorators import login_required
 from .models import Room, Vote
 import random
 from django.db import transaction
-from django.db.models import Min, F
 from collections import Counter
 from django.db.models import Count
 from django.core.serializers.json import DjangoJSONEncoder
@@ -57,19 +54,20 @@ def user_login(request):
 
 
 def index(request):
-    # Отримати всі кімнати
-    rooms = Room.objects.all()
-
     # Якщо форму було надіслано
     if request.method == 'POST':
         form = RoomForm(request.POST)
         if form.is_valid():
             room = form.save(commit=False)
             room.creator = request.user  # Зберігаємо користувача, який створив кімнату
+            room.players_count = request.POST.get('players_count')  # Отримати значення players_count
             room.save()
             return redirect('index')  # Перенаправлення на головну сторінку
     else:
         form = RoomForm()
+
+    # Отримати всі кімнати
+    rooms = Room.objects.all()
 
     # Передача кімнат та форми в контекст шаблону
     context = {
@@ -77,7 +75,6 @@ def index(request):
         'form': form,
     }
 
-    # Відображення шаблону
     return render(request, 'index.html', context)
 
 
@@ -189,6 +186,7 @@ def endTurn(request, room_id):
     # Отримати об'єкт кімнати за room_id
     room = get_object_or_404(Room, id=room_id)
     voting_id_room = room_id
+
     # Перевірка, чи гра взагалі розпочалася
     if not room.game_started:
         return JsonResponse({'error': 'Гра ще не розпочалася'}, status=400)
@@ -208,7 +206,6 @@ def endTurn(request, room_id):
     if not place.can_end_turn:
         return JsonResponse({'error': 'Ви не можете завершити свій хід'}, status=400)
 
-    # Позначити хід гравця як завершений
     place.turn_finished = True
     place.can_end_turn = False
     place.save()
@@ -217,8 +214,9 @@ def endTurn(request, room_id):
     current_place_id = place.id
 
     # Отримати наступного гравця
-    next_place = Place.objects.filter(room=room, id__gt=current_place_id).first()
+    next_place = Place.objects.filter(room=room, id__gt=current_place_id, is_kicked=False).first()
     all_players_finished_turn = all(place.turn_finished for place in room.place_set.all())
+
     # Перевірка, чи є наступний гравець
     if next_place is None:
         # Якщо немає наступного гравця, візьмемо першого гравця
@@ -263,7 +261,8 @@ def start_voting(room_id):
     return JsonResponse({'message': 'Голосування розпочато'})
 
 
-def vote_endpoint(request):
+def vote_endpoint(request, room_id):
+
     if request.method == 'POST':
         selected_player_name = request.POST.get('selected_player_name')
 
@@ -290,10 +289,6 @@ def vote_endpoint(request):
         except User.DoesNotExist:
             return JsonResponse({'error': 'Обраний гравець не знайдений'}, status=400)
 
-        # Перевірка, чи вже голосував цей гравець у поточній кімнаті
-        existing_vote = Vote.objects.filter(voter=voter, room=room).exists()
-        if existing_vote:
-            return JsonResponse({'error': 'Ви вже проголосували у цій кімнаті'}, status=400)
 
         # Створення нового голосу
         Vote.objects.create(voter=voter, target_player=target_player, room=room)
@@ -328,26 +323,56 @@ def vote_endpoint(request):
         return JsonResponse({'error': 'Метод не підтримується'}, status=405)
 
 
+def end_game(room):
+    message = f'Гра завершена'
+    print(f"Гра завершена")
+    return JsonResponse({'message': message}, status=200)
+
+
 def start_new_turn(room_id):
-    room = Room.objects.get(id=room_id)
 
-    # Отримати всі місця у кімнаті
-    places_in_room = Place.objects.filter(room=room)
+    room = get_object_or_404(Room, id=room_id)
+    # Отримуємо всіх гравців кімнати
+    players = room.place_set.all()
+    # Отримуємо загальну кількість гравців на початку гри
+    # initial_players_count = room.initial_players_count
+    initial_players_count = room.place_set.count()
+    # Підраховуємо кількість живих гравців
+    alive_players_count = players.filter(is_kicked=False).count()
+    print(f"Кількість гравців які в кімнаті : {alive_players_count}")
+    print(f"Кількість гравців на початку : {initial_players_count}")
+    print(f"Кількість гравців поділене на 2 : {initial_players_count // 2}")
 
-    # Почати новий хід для кожного місця у кімнаті
-    for place in places_in_room:
-        place.turn_finished = False
-        place.can_end_turn = True
-        place.voted = False
-        place.save()
+    # Перевіряємо, чи досягнута умова для завершення гри
+    if alive_players_count == initial_players_count // 2 or alive_players_count == (initial_players_count // 2) + 1:
+        # Якщо так, гра закінчується
+        end_game(room)
+    else:
+        # Отримати всі місця у кімнаті
+        places_in_room = Place.objects.filter(room=room)
 
-    # Оновити статус гри
-    room.game_started = True
-    room.voting_started = False
-    room.turn_ended = False
-    room.save()
+        # Вибрати першого гравця в кімнаті для початку нового ходу
+        first_place = places_in_room.filter(is_kicked=False).first()  # Фільтруємо за is_kicked
+        if first_place:
+            first_player = User.objects.get(username=first_place.player_name)
+            room.current_turn_player = first_player
+            room.save()
 
-    return JsonResponse({'message': 'Початок нового ходу'})
+            # Почати новий хід для кожного місця у кімнаті, якщо гравець не вигнаний
+            for place in places_in_room:
+                if not place.is_kicked:
+                    place.turn_finished = False
+                    place.can_end_turn = True
+                    place.voted = False
+                    place.save()
+
+        # Оновити статус гри
+        room.game_started = True
+        room.voting_started = False
+        room.turn_ended = False
+        room.save()
+
+        return JsonResponse({'message': 'Початок нового ходу'})
 
 
 def calculate_votes(room_id):
@@ -367,18 +392,6 @@ def determine_winner(room_id):
         return None
 
 
-def all_players_voted(room_id):
-    room = Room.objects.get(id=room_id)
-    # Отримати усіх гравців, які мають бути у кімнаті
-    all_players = room.players.all()
-
-    # Отримати гравців, які ще не проголосували
-    non_voting_players = all_players.exclude(vote__room=room)
-
-    # Якщо всі гравці проголосували, то non_voting_players буде пустим списком
-    return not non_voting_players.exists()
-
-
 def get_vote_results(request, room_id):
     # Отримати кількість голосів за кожного гравця у вказаній кімнаті
     vote_counts = (
@@ -392,35 +405,6 @@ def get_vote_results(request, room_id):
 
     # Повертаємо результат у форматі JSON
     return JsonResponse({'voteCounts': vote_counts_list}, encoder=DjangoJSONEncoder)
-
-
-def character_info(request):
-    user = request.user
-    try:
-        # Спробуйте отримати об'єкт CharacterCard для поточного користувача
-        character_card = CharacterCard.objects.get(player=user)
-    except CharacterCard.DoesNotExist:
-        # Якщо об'єкт не існує, створіть його з випадковими значеннями
-        bio = random.choice(BIO_OPTIONS) if BIO_OPTIONS else 'нема'
-        health = random.choice(HEALTH_OPTIONS) if HEALTH_OPTIONS else 'нема'
-        phobia = random.choice(PHOBIA_OPTIONS) if PHOBIA_OPTIONS else 'нема'
-        hobby = random.choice(HOBBY_OPTIONS) if HOBBY_OPTIONS else 'нема'
-        knowledge = random.choice(KNOWLEDGE_OPTIONS) if KNOWLEDGE_OPTIONS else 'нема'
-        additional_info = random.choice(ADDITIONAL_INFO_OPTIONS) if ADDITIONAL_INFO_OPTIONS else 'нема'
-        luggage = random.choice(LUGGAGE_OPTIONS) if LUGGAGE_OPTIONS else 'нема'
-
-        character_card = CharacterCard.objects.create(
-            player=user,
-            bio=bio,
-            health=health,
-            phobia=phobia,
-            hobby=hobby,
-            knowledge=knowledge,
-            additional_info=additional_info,
-            luggage=luggage
-        )
-
-    return render(request, 'character_info.html', {'character_card': character_card})
 
 
 @login_required
@@ -456,24 +440,3 @@ def toggle_visibility(request, character_card_id, characteristic):
     character_card.save()
 
     return JsonResponse({'success': 'Visibility toggled successfully'})
-
-
-def check_end_turn(request):
-    room_id = request.GET.get('room_id')
-    room = Room.objects.get(id=room_id)
-
-    # Отримуємо всі місця у кімнаті
-    places_in_room = Place.objects.filter(room=room)
-
-    # Перевіряємо, чи всі гравці в кімнаті натиснули кнопку "End Turn"
-    all_players_finished_turn = all(place.turn_finished for place in places_in_room)
-
-    # Повертаємо відповідь у форматі JSON
-    return JsonResponse({'all_players_finished_turn': all_players_finished_turn})
-
-
-def game_started(request, room_id):
-    # Опрацьовуйте початок гри тут
-    room = Room.objects.get(id=room_id)
-    return render(request, 'game_started.html',
-                  {'room': room, 'character_card': CharacterCard.objects.get(player=request.user)})

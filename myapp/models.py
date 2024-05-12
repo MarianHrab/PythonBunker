@@ -3,12 +3,12 @@ from django.contrib.auth.models import User
 from django.conf import settings
 from .utils import BIO_OPTIONS, HEALTH_OPTIONS, PHOBIA_OPTIONS, HOBBY_OPTIONS, KNOWLEDGE_OPTIONS, \
     ADDITIONAL_INFO_OPTIONS, LUGGAGE_OPTIONS
-
 from django.db.models.signals import pre_delete
 from django.dispatch import receiver
 
 
 class Room(models.Model):
+    initial_players_count = models.PositiveIntegerField(default=0)
     name = models.CharField(max_length=100)
     max_players = models.IntegerField()
     password = models.CharField(max_length=100, blank=True, null=True)
@@ -49,7 +49,6 @@ class CharacterCard(models.Model):
     additional_info = models.TextField(blank=True)
     luggage = models.TextField(blank=True)
 
-    # Додайте поля для статусу кожної характеристики
     bio_hidden = models.BooleanField(default=True)
     health_hidden = models.BooleanField(default=True)
     phobia_hidden = models.BooleanField(default=True)

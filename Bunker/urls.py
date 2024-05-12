@@ -13,10 +13,8 @@ urlpatterns = [
     path('delete_room/<int:room_id>/', views.delete_room, name='delete_room'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('start_game/<int:room_id>/', views.start_game, name='start_game'),
-    path('game_started/<int:room_id>/', views.game_started, name='game_started'),
-    path('character/', views.character_info, name='character_info'),
     path('toggle_visibility/<int:character_card_id>/<str:characteristic>/', views.toggle_visibility, name='toggle_visibility'),
     path('end_turn/<int:room_id>/', views.endTurn, name='end_turn'),
-    path('vote/', views.vote_endpoint, name='vote_endpoint'),
+    path('vote/<int:room_id>/', views.vote_endpoint, name='vote_endpoint'),
     path('get_vote_results/<int:room_id>/', views.get_vote_results, name='get_vote_results'),
 ]
