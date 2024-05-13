@@ -7,128 +7,160 @@
     <title>Деталі кімнати</title>
 </head>
 <body>
-    <h1>Привіт, гравець!</h1>
-    <!-- Виведення місць у кімнаті -->
-    <ul>
-        {% for place in places %}
-        <li id="place{{ place.id }}">
-            <!-- Кнопка "take a place" -->
-            {% if place.player_name %}
-                <span>{{ place.player_name }} Place №{{ forloop.counter }}</span>
-            {% else %}
-                <button onclick="takePlace({{ place.id }})">Take a Place</button>
-            {% endif %}
-        </li>
-        {% endfor %}
-    </ul>
-    {% if user.is_authenticated and room.creator == user %}
-        <button onclick="deleteRoom({{ room.id }})">Delete Room</button>
-    {% endif %}
+    <div class="container">
+        <div class="container">
+            <h1>Привіт, гравець!</h1>
 
-
-
-    <h2>Поточний хід:</h2>
-        {% if room.current_turn_player %}
-            <p id="currentTurnPlayer">{{ room.current_turn_player.username }}</p>
-            {% if room.current_turn_player == user %}
-                {% if not place.turn_finished and not place.can_end_turn %}
-                    {% if not room.turn_ended and not room.voting_started %}
-                        <button class="end-turn-button" data-room-id="{{ room_id }}">End Turn</button>
+            <!-- Виведення місць у кімнаті -->
+            <ul class="list-group">
+                {% for place in places %}
+                <li id="place{{ place.id }}" class="list-group-item d-flex justify-content-between align-items-center">
+                    <!-- Інформація про місце -->
+                    <div>
+                        {% if place.player_name %}
+                            <span>{{ place.player_name }}</span>
+                        {% else %}
+                            <span class="text-muted">Вільне місце</span>
+                        {% endif %}
+                        <span class="badge badge-primary badge-pill">Place №{{ forloop.counter }}</span>
+                    </div>
+                    <!-- Кнопка "take a place" -->
+                    {% if not place.player_name %}
+                        <button class="btn btn-primary" onclick="takePlace({{ place.id }})">Take a Place</button>
                     {% endif %}
-                {% endif %}
-            {% endif %}
-        {% else %}
-            <p>Гра ще не почалася або немає поточного гравця</p>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Кнопка видалення кімнати -->
+        {% if user.is_authenticated and room.creator == user %}
+            <button class="btn btn-danger mt-3" onclick="deleteRoom({{ room.id }})">Delete Room</button>
         {% endif %}
 
-    <h2>Список гравців:</h2>
-    <ul>
-        {% for place in places %}
-            {% if not place.player_name.is_kicked%}
-                <li>{{ place.player_name }}</li>
-                {% with character_card=place.character_card %}
-                    {% if character_card %}
-                        <ul>
-                            {% if character_card.player == request.user %}
-                                <!-- Показуємо кнопки "Show" тільки поточному гравцеві -->
-                                <li>Bio: {{ character_card.bio }}</li>
-                                        {% if room.current_turn_player == user %}
-                                            <button onclick="toggleVisibility('{{ character_card.id }}', 'bio')">Show bio</button>
-                                        {% endif %}
-                                        <li>Health: {{ character_card.health }}</li>
-                                        {% if room.current_turn_player == user %}
-                                            <button onclick="toggleVisibility('{{ character_card.id }}', 'health')">Show Health</button>
-                                        {% endif %}
-                                        <li>Phobia: {{ character_card.phobia }}</li>
-                                        {% if room.current_turn_player == user %}
-                                            <button onclick="toggleVisibility('{{ character_card.id }}', 'phobia')">Show Phobia</button>
-                                        {% endif %}
-                                        <li>Hobby: {{ character_card.hobby }}</li>
-                                        {% if room.current_turn_player == user %}
-                                            <button onclick="toggleVisibility('{{ character_card.id }}', 'hobby')">Show Hobby</button>
-                                        {% endif %}
-                                        <li>Knowledge: {{ character_card.knowledge }}</li>
-                                        {% if room.current_turn_player == user %}
-                                            <button onclick="toggleVisibility('{{ character_card.id }}', 'knowledge')">Show Knowledge</button>
-                                        {% endif %}
-                                        <li>Additional Info: {{ character_card.additional_info }}</li>
-                                        {% if room.current_turn_player == user %}
-                                            <button onclick="toggleVisibility('{{ character_card.id }}', 'additional_info')">Show Additional Info</button>
-                                        {% endif %}
-                                        <li>Baggage: {{ character_card.luggage }}</li>
-                                        {% if room.current_turn_player == user %}
-                                            <button onclick="toggleVisibility('{{ character_card.id }}', 'luggage')">Show Baggage</button>
-                                        {% endif %}
-                            {% else %}
-                                {% if not character_card.bio_hidden %}
-                                        <li>Bio: {{ character_card.bio }}</li>
-                                    {% else %}
-                                        <li>Bio: Hidden</li>
-                                    {% endif %}
-                                    {% if not character_card.health_hidden %}
-                                        <li>Health: {{ character_card.health }}</li>
-                                    {% else %}
-                                        <li>Health: Hidden</li>
-                                    {% endif %}
-                                    {% if not character_card.phobia_hidden %}
-                                        <li>Phobia: {{ character_card.phobia }}</li>
-                                    {% else %}
-                                        <li>Phobia: Hidden</li>
-                                    {% endif %}
-                                    {% if not character_card.hobby_hidden %}
-                                        <li>Hobby: {{ character_card.hobby }}</li>
-                                    {% else %}
-                                        <li>Hobby: Hidden</li>
-                                    {% endif %}
-                                    {% if not character_card.knowledge_hidden %}
-                                        <li>Knowledge: {{ character_card.knowledge }}</li>
-                                    {% else %}
-                                        <li>Knowledge: Hidden</li>
-                                    {% endif %}
-                                    {% if not character_card.additional_info_hidden %}
-                                        <li>Additional Info: {{ character_card.additional_info }}</li>
-                                    {% else %}
-                                        <li>Additional Info: Hidden</li>
-                                    {% endif %}
-                                    {% if not character_card.luggage_hidden %}
-                                        <li>Baggage: {{ character_card.luggage }}</li>
-                                    {% else %}
-                                        <li>Baggage: Hidden</li>
-                                    {% endif %}
+        <!-- Повідомлення -->
+        {% if messages %}
+            <ul class="messages mt-3">
+                {% for message in messages %}
+                    <li class="alert alert-{{ message.tags }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        <!-- Повідомлення про завершення гри -->
+        {% if room.game_finished %}
+            <div class="alert alert-warning mt-3" role="alert">
+                The players who remained outside the bunker survived and decided to take revenge on those who got into the bunker. In order to resist them, the inhabitants of the bunker need to have strong people, those who know martial arts, or have and know how to handle firearms
+            </div>
+        {% endif %}
+
+        <!-- Поточний хід -->
+        {% if room.game_finished == False %}
+            <h2 class="mt-3">Поточний хід:</h2>
+                {% if room.current_turn_player %}
+                    <p id="currentTurnPlayer">Поточний гравець: {{ room.current_turn_player.username }}</p>
+                    {% if room.current_turn_player == user %}
+                        {% if not place.turn_finished and not place.can_end_turn %}
+                            {% if not room.turn_ended and not room.voting_started %}
+                                <button class="btn btn-success end-turn-button" data-room-id="{{ room_id }}">End Turn</button>
                             {% endif %}
-                        </ul>
-                    {% else %}
-                        <p>No Character Card available for this player</p>
+                        {% endif %}
                     {% endif %}
-                {% endwith %}
-            {% endif %}
-        {% empty %}
-            <li>Кімната порожня</li>
-        {% endfor %}
-    </ul>
+                {% else %}
+                    <p>Гра ще не почалася або немає поточного гравця</p>
+                {% endif %}
+        {% endif %}
+    </div>
 
+    {% if room.game_finished == False %}
+        <h2>Список гравців:</h2>
+        <ul>
+            {% for place in places %}
+                {% if not place.player_name.is_kicked and room.game_started == True %}
+                    <li>{{ place.player_name }}</li>
+                    {% with character_card=place.character_card %}
+                        {% if character_card %}
+                            <ul>
+                                {% if character_card.player == request.user %}
+                                    <!-- Показуємо кнопки "Show" тільки поточному гравцеві -->
+                                    <li>Bio: {{ character_card.bio }}</li>
+                                            {% if room.current_turn_player == user %}
+                                                <button onclick="toggleVisibility('{{ character_card.id }}', 'bio')">Show bio</button>
+                                            {% endif %}
+                                            <li>Health: {{ character_card.health }}</li>
+                                            {% if room.current_turn_player == user %}
+                                                <button onclick="toggleVisibility('{{ character_card.id }}', 'health')">Show Health</button>
+                                            {% endif %}
+                                            <li>Phobia: {{ character_card.phobia }}</li>
+                                            {% if room.current_turn_player == user %}
+                                                <button onclick="toggleVisibility('{{ character_card.id }}', 'phobia')">Show Phobia</button>
+                                            {% endif %}
+                                            <li>Hobby: {{ character_card.hobby }}</li>
+                                            {% if room.current_turn_player == user %}
+                                                <button onclick="toggleVisibility('{{ character_card.id }}', 'hobby')">Show Hobby</button>
+                                            {% endif %}
+                                            <li>Knowledge: {{ character_card.knowledge }}</li>
+                                            {% if room.current_turn_player == user %}
+                                                <button onclick="toggleVisibility('{{ character_card.id }}', 'knowledge')">Show Knowledge</button>
+                                            {% endif %}
+                                            <li>Additional Info: {{ character_card.additional_info }}</li>
+                                            {% if room.current_turn_player == user %}
+                                                <button onclick="toggleVisibility('{{ character_card.id }}', 'additional_info')">Show Additional Info</button>
+                                            {% endif %}
+                                            <li>Baggage: {{ character_card.luggage }}</li>
+                                            {% if room.current_turn_player == user %}
+                                                <button onclick="toggleVisibility('{{ character_card.id }}', 'luggage')">Show Baggage</button>
+                                            {% endif %}
+                                {% else %}
+                                    {% if not character_card.bio_hidden %}
+                                            <li>Bio: {{ character_card.bio }}</li>
+                                        {% else %}
+                                            <li>Bio: Hidden</li>
+                                        {% endif %}
+                                        {% if not character_card.health_hidden %}
+                                            <li>Health: {{ character_card.health }}</li>
+                                        {% else %}
+                                            <li>Health: Hidden</li>
+                                        {% endif %}
+                                        {% if not character_card.phobia_hidden %}
+                                            <li>Phobia: {{ character_card.phobia }}</li>
+                                        {% else %}
+                                            <li>Phobia: Hidden</li>
+                                        {% endif %}
+                                        {% if not character_card.hobby_hidden %}
+                                            <li>Hobby: {{ character_card.hobby }}</li>
+                                        {% else %}
+                                            <li>Hobby: Hidden</li>
+                                        {% endif %}
+                                        {% if not character_card.knowledge_hidden %}
+                                            <li>Knowledge: {{ character_card.knowledge }}</li>
+                                        {% else %}
+                                            <li>Knowledge: Hidden</li>
+                                        {% endif %}
+                                        {% if not character_card.additional_info_hidden %}
+                                            <li>Additional Info: {{ character_card.additional_info }}</li>
+                                        {% else %}
+                                            <li>Additional Info: Hidden</li>
+                                        {% endif %}
+                                        {% if not character_card.luggage_hidden %}
+                                            <li>Baggage: {{ character_card.luggage }}</li>
+                                        {% else %}
+                                            <li>Baggage: Hidden</li>
+                                        {% endif %}
+                                {% endif %}
+                            </ul>
+                        {% else %}
+                            <p>No Character Card available for this player</p>
+                        {% endif %}
+                    {% endwith %}
+                {% endif %}
+            {% empty %}
+                <li>Кімната порожня</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
 
-    {% if room.voting_started %}
+    {% if room.voting_started and room.game_finished == False%}
         <form id="voteForm" method="post" action="{% url 'vote_endpoint' room_id=room.id %}">
             {% csrf_token %}
             <input type="hidden" name="room_id" value="{{ room.id }}">
@@ -165,9 +197,49 @@
 
 
 
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
 
     <script>
+
+        // Функція для відправки асинхронного запиту на сервер
+        function start_game() {
+            // Створюємо новий об'єкт XMLHttpRequest
+            var xhr = new XMLHttpRequest();
+
+            // Встановлюємо обробник події при успішному завершенні запиту
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    // Якщо запит успішно завершився, оновлюємо сторінку
+                    window.location.reload();
+                } else {
+                    // Якщо виникла помилка, виводимо повідомлення про помилку
+                    alert('Помилка: ' + xhr.statusText);
+                }
+            };
+
+            // Встановлюємо метод та URL для запиту
+            xhr.open('POST', '{% url "start_game" room.id %}', true);
+
+            // Встановлюємо заголовок для правильної обробки CSRF-токена
+            xhr.setRequestHeader('X-CSRFToken', '{{ csrf_token }}');
+
+            // Відправляємо запит
+            xhr.send();
+        }
+
+         // Очікуємо 5 секунд перед початком видалення повідомлення
+        setTimeout(function() {
+            var messages = document.querySelectorAll('.messages li');
+            // Якщо є повідомлення
+            if (messages.length > 0) {
+                // Видаляємо перше повідомлення
+                messages[0].remove();
+            }
+        }, 5000); // 5000 мілісекунд = 5 секунд
+
         // Відправляємо запит до vote_endpoint
         $.ajax({
             type: "POST",

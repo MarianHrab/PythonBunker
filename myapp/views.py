@@ -15,6 +15,7 @@ from django.db import transaction
 from collections import Counter
 from django.db.models import Count
 from django.core.serializers.json import DjangoJSONEncoder
+from django.contrib import messages
 
 from .utils import (
     BIO_OPTIONS,
@@ -177,9 +178,9 @@ def start_game(request, room_id):
                 # Присвоюємо створену CharacterCard об'єкту місця
                 place.character_card = character_card
                 place.save()
-
+    messages.success(request, 'Game started!')
     # Повертаємо відповідь JSON, що підтверджує успішний початок гри
-    return JsonResponse({'message': 'Гра успішно розпочалася'})
+    return redirect('room_detail', room_id=room_id)
 
 
 def endTurn(request, room_id):
@@ -262,7 +263,6 @@ def start_voting(room_id):
 
 
 def vote_endpoint(request, room_id):
-
     if request.method == 'POST':
         selected_player_name = request.POST.get('selected_player_name')
 
@@ -289,7 +289,6 @@ def vote_endpoint(request, room_id):
         except User.DoesNotExist:
             return JsonResponse({'error': 'Обраний гравець не знайдений'}, status=400)
 
-
         # Створення нового голосу
         Vote.objects.create(voter=voter, target_player=target_player, room=room)
 
@@ -312,6 +311,7 @@ def vote_endpoint(request, room_id):
             # Створення повідомлення для pop-up
             message = f'Гравець {winner_names} за результатом голосування'
             print(f'Гравець {winner_names} за результатом голосування')
+            messages.success(request, 'Гравець {winner_names} за результатом голосування!')
             # Початок нового ходу після завершення голосування
             start_new_turn(room_id)
             # Відправлення JSON відповіді з повідомленням
@@ -324,13 +324,13 @@ def vote_endpoint(request, room_id):
 
 
 def end_game(room):
-    message = f'Гра завершена'
+    room.game_finished = True
+    room.save()
     print(f"Гра завершена")
-    return JsonResponse({'message': message}, status=200)
+    return JsonResponse({'error': 'Game finished'}, status=200)
 
 
 def start_new_turn(room_id):
-
     room = get_object_or_404(Room, id=room_id)
     # Отримуємо всіх гравців кімнати
     players = room.place_set.all()
@@ -437,6 +437,7 @@ def toggle_visibility(request, character_card_id, characteristic):
     else:
         return JsonResponse({'error': 'Invalid characteristic'}, status=400)
 
+    character_card.characteristic_opened = True
     character_card.save()
 
     return JsonResponse({'success': 'Visibility toggled successfully'})

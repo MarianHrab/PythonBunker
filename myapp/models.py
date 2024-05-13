@@ -10,6 +10,7 @@ from django.dispatch import receiver
 class Room(models.Model):
     initial_players_count = models.PositiveIntegerField(default=0)
     name = models.CharField(max_length=100)
+    char_by_turn = models.IntegerField(default=1)
     max_players = models.IntegerField()
     password = models.CharField(max_length=100, blank=True, null=True)
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_rooms')
@@ -20,6 +21,7 @@ class Room(models.Model):
                                             related_name='current_turn_player_rooms')
     turn_ended = models.BooleanField(default=False)
     voting_started = models.BooleanField(default=False)
+    game_finished = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name
@@ -37,9 +39,8 @@ def delete_character_cards(sender, instance, **kwargs):
     character_cards.delete()
 
 
-
-
 class CharacterCard(models.Model):
+    characteristic_opened = models.BooleanField(default=False)
     player = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     bio = models.TextField(blank=True)
     health = models.CharField(blank=True, max_length=100)
@@ -81,7 +82,8 @@ class Place(models.Model):
 
 class Vote(models.Model):
     voter = models.ForeignKey(User, on_delete=models.CASCADE)  # Гравець, який голосує
-    target_player = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_votes')  # Гравець, на якого голосують
+    target_player = models.ForeignKey(User, on_delete=models.CASCADE,
+                                      related_name='received_votes')  # Гравець, на якого голосують
     room = models.ForeignKey(Room, on_delete=models.CASCADE)  # Кімната, де відбувається голосування
     created_at = models.DateTimeField(auto_now_add=True)  # Дата та час створення голосу
 
