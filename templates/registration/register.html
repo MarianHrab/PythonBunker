@@ -1,14 +1,30 @@
+{% include 'header.html' %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Register</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Зареєструватися</button>
-    </form>
+<body style="background-color: black">
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card text-white mt-5" style="border-color: aliceblue; background-color: #000000; border-width: 2px">
+                    <div class="card-header">Register</div>
+                    <div class="card-body">
+                        <form method="post">
+                            {% csrf_token %}
+                            {{ form.as_p }}
+                            <button type="submit" class="btn btn-primary btn-block bg-warning text-dark font-weight-bold" style="border-color: black;  border-width: 2px">Register</button>
+                        </form>
+                    </div>
+                    <div class="card-footer text-center " style="border-width: 2px; border-color: aliceblue">
+                        <a href="{% url 'register' %}" class="text-decoration-none text-warning">Already registered? Login here</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

@@ -268,7 +268,7 @@ def vote_endpoint(request, room_id):
 
         # Перевірка, чи вибраний гравець переданий у запиті
         if not selected_player_name:
-            return JsonResponse({'error': 'Не вказано гравця для голосування'}, status=400)
+            return JsonResponse({'error': 'No player for voting'}, status=400)
 
         # Отримання поточного користувача, який голосує
         voter = request.user
@@ -281,13 +281,13 @@ def vote_endpoint(request, room_id):
         try:
             place = Place.objects.get(room=room, player_name=voter.username)
         except Place.DoesNotExist:
-            return JsonResponse({'error': 'Ви не берете участь у цій грі або вас вже викреслено з кімнати'}, status=400)
+            return JsonResponse({'error': 'You are not able to vote'}, status=400)
 
         # Отримання об'єкта гравця, на якого голосують
         try:
             target_player = User.objects.get(username=selected_player_name)
         except User.DoesNotExist:
-            return JsonResponse({'error': 'Обраний гравець не знайдений'}, status=400)
+            return JsonResponse({'error': 'No player found'}, status=400)
 
         # Створення нового голосу
         Vote.objects.create(voter=voter, target_player=target_player, room=room)
@@ -309,24 +309,22 @@ def vote_endpoint(request, room_id):
                 winner_place.is_kicked = True
                 winner_place.save()
             # Створення повідомлення для pop-up
-            message = f'Гравець {winner_names} за результатом голосування'
-            print(f'Гравець {winner_names} за результатом голосування')
-            messages.success(request, 'Гравець {winner_names} за результатом голосування!')
+            message = f'Player {winner_names} as a voting result'
+            messages.success(request, 'Player {winner_names} as a voting result!')
             # Початок нового ходу після завершення голосування
             start_new_turn(room_id)
             # Відправлення JSON відповіді з повідомленням
             return JsonResponse({'message': message}, status=200)
         else:
             # Повернення повідомлення про успішне голосування
-            return JsonResponse({'message': 'Голосування зараховано'}, status=200)
+            return JsonResponse({'message': 'Voted counted'}, status=200)
     else:
-        return JsonResponse({'error': 'Метод не підтримується'}, status=405)
+        return JsonResponse({'error': 'No method'}, status=405)
 
 
 def end_game(room):
     room.game_finished = True
     room.save()
-    print(f"Гра завершена")
     return JsonResponse({'error': 'Game finished'}, status=200)
 
 
@@ -339,9 +337,6 @@ def start_new_turn(room_id):
     initial_players_count = room.place_set.count()
     # Підраховуємо кількість живих гравців
     alive_players_count = players.filter(is_kicked=False).count()
-    print(f"Кількість гравців які в кімнаті : {alive_players_count}")
-    print(f"Кількість гравців на початку : {initial_players_count}")
-    print(f"Кількість гравців поділене на 2 : {initial_players_count // 2}")
 
     # Перевіряємо, чи досягнута умова для завершення гри
     if alive_players_count == initial_players_count // 2 or alive_players_count == (initial_players_count // 2) + 1:
@@ -372,7 +367,7 @@ def start_new_turn(room_id):
         room.turn_ended = False
         room.save()
 
-        return JsonResponse({'message': 'Початок нового ходу'})
+        return JsonResponse({'message': 'New turn'})
 
 
 def calculate_votes(room_id):
@@ -441,3 +436,11 @@ def toggle_visibility(request, character_card_id, characteristic):
     character_card.save()
 
     return JsonResponse({'success': 'Visibility toggled successfully'})
+
+
+def rules(request):
+    return render(request, 'rules.html')
+
+
+def contacts(request):
+    return render(request, 'contacts.html')

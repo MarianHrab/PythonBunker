@@ -5,30 +5,60 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Список кімнат</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body>
-    <h1>Список кімнат</h1>
+<body style="background-color: black">
+    <div class="text-center mt-5 mx-auto" style="max-width: 1500px;">
+        <!-- Bootstrap Grid Container with Margin -->
+        <div class="container-fluid my-4 mx-auto" style="max-width: 1500px;">
+            <div class="row">
+                <!-- Public Rooms Container -->
+                <div class="col-md-5 mb-2 mx-auto"> <!-- Added mx-auto to center align -->
+                    <div class="public-rooms-container bg-dark text-light p-4 border border-white" style="border-radius: 20px;">
+                        <!-- Search Room Form -->
+                        <form class="form-inline mb-3">
+                            <div class="form-group flex-grow-1 mr-2">
+                                <label for="searchRoom" class="sr-only">Search Room</label>
+                                <input type="text" class="form-control rounded-20 w-100" id="searchRoom" placeholder="Search by room name">
+                            </div>
+                            <button type="submit" class="btn rounded-20" style="color: black; background-color: #F2B705; border: none; margin-right: 8px; border-radius: 20px;">Search</button>
+                        </form>
+                        <ul class="list-unstyled">
+                            {% for room in rooms %}
+                            <li class="room-item border-bottom py-2">
+                                <div class="d-flex justify-content-between align-items-center" style="background-color: #434242; border-radius: 30px">
+                                    <div class="room-details">
+                                        <span class="room-name mr-2 ml-3">{{ room.name }}</span>
+                                    </div>
+                                    <div class="actions mr-2 my-2 d-flex align-items-center">
+                                        <div>
+                                            <span class="room-name mr-2 ml-3">{{ room.name }}</span>
+                                        </div>
+                                        <div class="mr-auto">
+                                            <span class="player-count badge badge-pill badge-light">{{ room.players.count }}</span>
+                                            <span class="player-label ml-2">players</span>
+                                        </div>
+                                        <a href="{% url 'room_detail' room.id %}" class="btn btn-dark connect-button ml-2">Connect</a>
+                                    </div>
+                                </div>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
 
-    <!-- Відображення списку кімнат -->
-    <ul>
-        {% for room in rooms %}
-        <li>
-            {{ room.name }}
-            <form action="{% url 'room_detail' room.id %}" method="GET">
-                <button type="submit">Connect</button>
-            </form>
-        </li>
-        {% endfor %}
-    </ul>
-
-    <!-- Форма створення кімнати -->
-    <h2>Створити кімнату</h2>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Створити кімнату</button>
-    </form>
-
-
+                <!-- Container for New Room Creation -->
+                <div class="col-md-5 mb-2 mx-auto"> <!-- Added mx-auto to center align -->
+                    <div class="new-room-container bg-dark text-light p-4 border border-white" style="border-radius: 20px;">
+                        <form method="post">
+                            {% csrf_token %}
+                            {{ form.as_p }}
+                            <button type="submit" class="btn rounded-20" style="color: #000000; background-color: #F2B705; width: 290px; height: 63px; font-size: 20px; border: none; border-radius: 20px;">Create Room</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

@@ -17,4 +17,6 @@ urlpatterns = [
     path('end_turn/<int:room_id>/', views.endTurn, name='end_turn'),
     path('vote/<int:room_id>/', views.vote_endpoint, name='vote_endpoint'),
     path('get_vote_results/<int:room_id>/', views.get_vote_results, name='get_vote_results'),
+    path('rules/', views.rules, name='rules'),
+    path('contacts/', views.contacts, name='contacts'),
 ]
