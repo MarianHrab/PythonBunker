@@ -9,13 +9,10 @@
 </head>
 <body style="background-color: black">
     <div class="text-center mt-5 mx-auto" style="max-width: 1500px;">
-        <!-- Bootstrap Grid Container with Margin -->
         <div class="container-fluid my-4 mx-auto" style="max-width: 1500px;">
             <div class="row">
-                <!-- Public Rooms Container -->
-                <div class="col-md-5 mb-2 mx-auto"> <!-- Added mx-auto to center align -->
+                <div class="col-md-5 mb-2 mx-auto">
                     <div class="public-rooms-container bg-dark text-light p-4 border border-white" style="border-radius: 20px;">
-                        <!-- Search Room Form -->
                         <form class="form-inline mb-3">
                             <div class="form-group flex-grow-1 mr-2">
                                 <label for="searchRoom" class="sr-only">Search Room</label>
@@ -46,9 +43,7 @@
                         </ul>
                     </div>
                 </div>
-
-                <!-- Container for New Room Creation -->
-                <div class="col-md-5 mb-2 mx-auto"> <!-- Added mx-auto to center align -->
+                <div class="col-md-5 mb-2 mx-auto">
                     <div class="new-room-container bg-dark text-light p-4 border border-white" style="border-radius: 20px;">
                         <form method="post">
                             {% csrf_token %}

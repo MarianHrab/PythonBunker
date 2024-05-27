@@ -18,9 +18,6 @@
         .rounded-xxl {
             border-radius: 1.5rem;
         }
-        .rounded-xl {
-            border-radius: 0.5rem;
-        }
         .show-button{
             background-color: #0D0D0D;
             width: 60px;
@@ -30,12 +27,10 @@
 </head>
 <body class="text-white " style="background-color: #0D0D0D;">
     <div class="container mt-5">
-        <!-- Виведення місць у кімнаті -->
         {% if room.game_started == False %}
             <ul class="list-group">
                 {% for place in places %}
                 <li id="place{{ place.id }}" class="list-group-item d-flex justify-content-between align-items-center bg-dark border-white border-top ">
-                    <!-- Інформація про місце -->
                     <div class="">
                         {% if place.player_name %}
                             <span>{{ place.player_name }}</span>
@@ -44,7 +39,6 @@
                         {% endif %}
                         <span class="badge badge-primary badge-pill">Place №{{ forloop.counter }}</span>
                     </div>
-                    <!-- Кнопка "take a place" -->
                     {% if not place.player_name %}
                         <button class="btn btn-primary" onclick="takePlace({{ place.id }})">Take a Place</button>
                     {% endif %}
@@ -53,7 +47,6 @@
             </ul>
         {% endif %}
 
-        <!-- Повідомлення -->
         {% if messages %}
             <ul class="messages mt-3">
                 {% for message in messages %}
@@ -62,7 +55,6 @@
             </ul>
         {% endif %}
 
-        <!-- Повідомлення про завершення гри -->
         {% if room.game_finished %}
             <div class="alert alert-warning mt-3" role="alert">
                 The players who remained outside the bunker survived and decided to take revenge on those who got into the bunker. In order to resist them, the inhabitants of the bunker need to have strong people, those who know martial arts, or have and know how to handle firearms
@@ -72,7 +64,7 @@
 
     <div class="ml-5 d-flex justify-content-center">
         {% if room.game_started == True and room.game_finished == False%}
-            <p id="currentTurnPlayer" class="display-4 font-weight-bold mb-5">Поточний гравець: {{ room.current_turn_player.username }}</p>
+            <p id="currentTurnPlayer" class="display-4 font-weight-bold mb-5">Current player: {{ room.current_turn_player.username }}</p>
         {% endif %}
     </div>
 
@@ -84,7 +76,6 @@
                     <input type="hidden" name="room_id" value="{{ room.id }}">
                     <div class="form-group">
                         <label for="selected_player_name">Choose player:</label>
-                        <!-- Встановлюємо ширину поля вибору гравців -->
                         <select id="selected_player_name" name="selected_player_name" class="form-control" style="width: 200px;">
                             {% if room.turn_ended and room.voting_started %}
                                 {% for player in players %}
@@ -104,7 +95,6 @@
             <div class="row card-container ">
                 {% for place in places %}
                     {% if not place.player_name.is_kicked and room.game_started == True %}
-                        <!-- Стилізуємо ім'я гравця -->
                         <div class="card bg-primary text-white col-md-5 bg-warning rounded-xxl ml-3">
                             <h5 class="card-title mt-3 mb-1 text-dark text-center">{{ place.player_name }}</h5>
                             <div class="card-body mb-3 mt-3 rounded" style="background-color: #0D0D0D;">
@@ -174,7 +164,6 @@
     </div>
 
     <div class="d-flex justify-content-center align-items-center mt-5 ">
-        <!-- Поточний хід -->
         {% if room.game_finished == False %}
             {% if room.current_turn_player %}
                 {% if room.current_turn_player == user %}
@@ -188,11 +177,10 @@
                 <p>Game is not started yet. Please wait for room owner to start a game... </p>
             {% endif %}
         {% endif %}
-
     </div>
 
     <dev>
-        {% if user.is_authenticated and user == room.creator and not room.game_started %}
+        {% if user.is_authenticated and user == room.creator and not room.game_starteІd %}
             <form method="post" action="{% url 'start_game' room.id %}">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-success mt-3 ml-4">Start Game</button>
@@ -200,13 +188,11 @@
         {% endif %}
     </dev>
 
-
     {% if room.voting_started == True %}
         <div class="container mt-3">
             <div class="row">
                 <div class="col">
                     <ul id="voteResultsList" class="list-group">
-                        <!-- Тут буде виведений результат голосування через JavaScript -->
                     </ul>
                 </div>
             </div>
@@ -224,52 +210,32 @@
         {% endif %}
     </div>
 
-
-
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
-
+і
     <script>
-
-        // Функція для відправки асинхронного запиту на сервер
         function start_game() {
-            // Створюємо новий об'єкт XMLHttpRequest
             var xhr = new XMLHttpRequest();
-
-            // Встановлюємо обробник події при успішному завершенні запиту
             xhr.onload = function() {
                 if (xhr.status === 200) {
-                    // Якщо запит успішно завершився, оновлюємо сторінку
                     window.location.reload();
                 } else {
-                    // Якщо виникла помилка, виводимо повідомлення про помилку
                     alert('Помилка: ' + xhr.statusText);
                 }
             };
-
-            // Встановлюємо метод та URL для запиту
             xhr.open('POST', '{% url "start_game" room.id %}', true);
-
-            // Встановлюємо заголовок для правильної обробки CSRF-токена
             xhr.setRequestHeader('X-CSRFToken', '{{ csrf_token }}');
-
-            // Відправляємо запит
             xhr.send();
         }
 
-         // Очікуємо 5 секунд перед початком видалення повідомлення
         setTimeout(function() {
             var messages = document.querySelectorAll('.messages li');
-            // Якщо є повідомлення
             if (messages.length > 0) {
-                // Видаляємо перше повідомлення
                 messages[0].remove();
             }
-        }, 5000); // 5000 мілісекунд = 5 секунд
-
-        // Відправляємо запит до vote_endpoint
+        }, 5000);
         $.ajax({
             type: "POST",
             url: "/vote_endpoint/",
@@ -279,9 +245,7 @@
                 csrfmiddlewaretoken: csrftoken
             },
             success: function(response) {
-                // Перевіряємо, чи є повідомлення про гравця-переможця
                 if (response.message) {
-                    // Показуємо pop-up з повідомленням
                     Swal.fire({
                         title: 'Голосування завершено',
                         text: response.message,
@@ -298,20 +262,14 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            // Отримуємо ідентифікатор кімнати з HTML-елемента
             var roomId = document.getElementById("roomId").value;
-
-            // Викликаємо функцію для отримання результатів голосування
             getVoteResults(roomId);
         });
-        // Функція для отримання результатів голосування через AJAX-запит
         function getVoteResults(roomId) {
-            // Виконуємо AJAX-запит для отримання результатів голосування
             $.ajax({
                 type: "GET",
-                url: `/get_vote_results/${roomId}/`, // URL для отримання результатів голосування
+                url: `/get_vote_results/${roomId}/`,
                 success: function(response) {
-                    // Викликаємо функцію для відображення результатів голосування
                     displayVoteResults(response.voteCounts);
                 },
                 error: function(xhr, status, error) {
@@ -320,34 +278,23 @@
             });
         }
 
-        // Функція для відображення результатів голосування
         function displayVoteResults(voteCounts) {
-            // Отримуємо список для відображення результатів голосування
             var voteResultsList = document.getElementById("voteResultsList");
-
-            // Очищаємо список
             voteResultsList.innerHTML = '';
-
-            // Додаємо кожен результат голосування до списку
             voteCounts.forEach(function(item) {
                 var listItem = document.createElement('li');
                 listItem.textContent = `${item.target_player__username}: ${item.total_votes}`;
                 voteResultsList.appendChild(listItem);
             });
-
-            // Показуємо розділ з результатами голосування
             document.getElementById("voteResultsSection").style.display = "block";
         }
 
         function vote() {
-            var selectedPlayerName = $("#selected_player_name").val(); // Змінено селектор на selected_player_name
-
-            // Перевірка, чи вибраний гравець перед відправкою форми
+            var selectedPlayerName = $("#selected_player_name").val();
             if (!selectedPlayerName) {
                 alert("Будь ласка, виберіть гравця для голосування.");
                 return; // Припинити виконання функції, якщо гравець не вибрано
             }
-
             var roomId = $("#voteForm input[name='room_id']").val();
             var url = "{% url 'vote_endpoint' room_id=room.id %}";
             $.ajax({
@@ -368,13 +315,10 @@
         }
     function handleEndTurnClick(event) {
         console.log('Button clicked!');
-        // Отримуємо номер кімнати з атрибута "data-room-id"
         var roomId = event.target.getAttribute('data-room-id');
-        // Викликаємо функцію endTurn з номером кімнати
         endTurn(roomId);
     }
 
-    // Додаємо обробник кліків до всіх кнопок з класом "end-turn-button"
     var endTurnButtons = document.querySelectorAll('.end-turn-button');
     endTurnButtons.forEach(function(button) {
         button.addEventListener('click', handleEndTurnClick);
@@ -382,7 +326,6 @@
 
     function endTurn(roomId) {
             var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-
             fetch(`/end_turn/${roomId}/`, {
                 method: 'POST',
                 headers: {
@@ -393,17 +336,12 @@
             })
             .then(response => {
                 if (response.ok) {
-                    // Відключення кнопки "End Turn" для поточного гравця
                     var currentTurnButton = document.querySelector('.end-turn-button[data-room-id="' + roomId + '"]');
                     currentTurnButton.disabled = true;
-
-                    // Активація кнопки "End Turn" для наступного гравця
                     var nextPlayerButton = getNextPlayerButton();
                     if (nextPlayerButton) {
                         nextPlayerButton.disabled = false;
                     }
-
-                    // Оновлення сторінки для відображення оновлених даних
                     location.reload();
                 } else {
                     alert('Failed to end turn');
@@ -413,28 +351,17 @@
     }
 
         function getNextPlayerButton() {
-            // Отримання списку всіх кнопок "End Turn"
             var endTurnButtons = document.querySelectorAll('.end-turn-button');
-
-            // Пошук наступної кнопки "End Turn" після поточного гравця
             for (var i = 0; i < endTurnButtons.length; i++) {
                 if (!endTurnButtons[i].disabled) {
-                    // Повернення знайденої кнопки
                     return endTurnButtons[i + 1];
                 }
             }
-
-            // Якщо немає наступної кнопки, повертаємо null
             return null;
         }
-        
 
-        // Знаходимо всі кнопки з класом "end-turn-button"
         function toggleVisibility(characterCardId, characteristic) {
-            // Отримати CSRF-токен
             var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-
-            // Відправити запит на сервер для зміни статусу видимості характеристики
             fetch(`/toggle_visibility/${characterCardId}/${characteristic}/`, {
                 method: 'POST',
                 headers: {
@@ -445,7 +372,6 @@
             })
             .then(response => {
                 if (response.ok) {
-                    // Оновити сторінку для відображення оновлених даних
                     location.reload();
                 } else {
                     alert('Failed to toggle visibility');
@@ -472,16 +398,9 @@
             if (data.error) {
                 alert(data.error);
             } else {
-                // Отримуємо DOM-елемент місця за його ID
                 const placeElement = document.getElementById(`place${placeId}`);
-
-                // Створюємо текст для відображення номера місця
                 const playerPlaceText = document.createTextNode(`${data.player_name} Place №${data.place_number}`);
-
-                // Очищаємо вміст місця
                 placeElement.innerHTML = '';
-
-                // Додаємо текст з номером місця до місця
                 placeElement.appendChild(playerPlaceText);
             }
         })
@@ -505,7 +424,5 @@
         .catch(error => console.error('Error:', error));
     }
     </script>
-
-
 </body>
 </html>
